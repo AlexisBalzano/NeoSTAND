@@ -4,22 +4,22 @@
 #include <vector>
 
 #include "NeoRadarSDK/SDK.h"
-#include "core/PLUGIN_NAMECommandProvider.h"
+#include "core/NeoSTANDCommandProvider.h"
 #include "core/DataManager.h"
 
-constexpr const char* PLUGIN_NAME_VERSION = "v0.0.1";
+constexpr const char* NEOSTAND_VERSION = "v0.0.1";
 
 using namespace PluginSDK;
 
-namespace PLUGIN_NAMESPACE {
+namespace stand {
 
-    class PLUGIN_NAMECommandProvider;
+    class NeoSTANDCommandProvider;
 
-    class PLUGIN_NAME : public BasePlugin
+    class NeoSTAND : public BasePlugin
     {
     public:
-        PLUGIN_NAME();
-        ~PLUGIN_NAME();
+        NeoSTAND();
+        ~NeoSTAND();
 
 		// Plugin lifecycle methods
         void Initialize(const PluginMetadata& metadata, CoreAPI* coreAPI, ClientInformation info) override;
@@ -54,13 +54,15 @@ namespace PLUGIN_NAMESPACE {
 
     public:
         // Command IDs
-        std::string commandId_;
+        std::string versionCommandId_;
+        std::string helpCommandId_;
 
     private:
         // Plugin state
         bool initialized_ = false;
         std::thread m_worker;
         bool m_stop;
+		bool autoModeState = true;
 
         // APIs
         PluginMetadata metadata_;
@@ -74,7 +76,7 @@ namespace PLUGIN_NAMESPACE {
         PluginSDK::ControllerData::ControllerDataAPI* controllerDataAPI_ = nullptr;
         Tag::TagInterface* tagInterface_ = nullptr;
         std::unique_ptr<DataManager> dataManager_;
-        std::shared_ptr<NeoVSIDCommandProvider> CommandProvider_;
+        std::shared_ptr<NeoSTANDCommandProvider> CommandProvider_;
 
         // Tag Items
         void RegisterTagItems();
@@ -83,8 +85,8 @@ namespace PLUGIN_NAMESPACE {
         void unegisterCommand();
         void OnTagAction(const Tag::TagActionEvent* event) override;
         void OnTagDropdownAction(const Tag::DropdownActionEvent* event) override;
-        void UpdateTagItems();
-        void UpdateTagItems(std::string Callsign);
+        //void UpdateTagItems();
+        //void UpdateTagItems(std::string Callsign);
 
 	    // TAG Items IDs
 		std::string tagItemId_;
@@ -92,4 +94,4 @@ namespace PLUGIN_NAMESPACE {
         // TAG Action IDs
         std::string tagActionId_;
     };
-} // namespace PLUGIN_NAMESPACE
+} // namespace stand

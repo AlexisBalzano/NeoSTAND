@@ -3,8 +3,7 @@
 #include <format>
 #include <string>
 
-#include "TagItemsColor.h"
-#include "PLUGIN_NAME.h"
+#include "NeoSTAND.h"
 
 #ifdef DEV
 #define LOG_DEBUG(loglevel, message) logger_->log(loglevel, message)
@@ -12,10 +11,10 @@
 #define LOG_DEBUG(loglevel, message) void(0)
 #endif
 
-sing namespace PLUGIN_NAMESPACE::tagitems;
+using namespace stand;
 
-namespace PLUGIN_NAMESPACE {
-void PLUGIN_NAME::RegisterTagItems()
+namespace stand {
+void NeoSTAND::RegisterTagItems()
 {
     PluginSDK::Tag::TagItemDefinition tagDef;
 
@@ -28,24 +27,5 @@ void PLUGIN_NAME::RegisterTagItems()
 
 
 // TAG ITEM UPDATE FUNCTIONS
-void PLUGIN_NAME::updateTagItem() {
-    Tag::TagContext tagContext;
-	tagContext.callsign = callsign;
-    tagContext.colour = color;
-    param.tagInterface_->UpdateTagValue(param.tagId_, cfl_string, tagContext);
-}
 
-// Update all tag items for all pilots
-void PLUGIN_NAME::UpdateTagItems() {
-	callsignsScope = dataManager_->getAllDepartureCallsigns();
-    for (auto &callsign : callsignsScope)
-    {
-		UpdateTagItems(callsign);
-    }
-}
-
-// Update all tag items for a specific callsign
-void PLUGIN_NAME::UpdateTagItems(std::string callsign) {
-    updateTagItem();
-}
 }  // namespace vsid

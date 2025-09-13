@@ -9,7 +9,7 @@ using namespace PluginSDK;
 
 class DataManager {
 public:
-	DataManager(PLUGIN_NAMESPACE::PLUGIN_NAME* PLUGIN_NAME);
+	DataManager(stand::NeoSTAND* NeoSTAND);
 	~DataManager() = default;
 
 	void clearData();
@@ -27,7 +27,7 @@ private:
 	Airport::AirportAPI* airportAPI_ = nullptr;
 	PluginSDK::ControllerData::ControllerDataAPI* controllerDataAPI_ = nullptr;
 	Chat::ChatAPI* chatAPI_ = nullptr;
-	PLUGIN_NAMESPACE::PLUGIN_NAME* PLUGIN_NAME_ = nullptr;
+	stand::NeoSTAND* NeoSTAND_ = nullptr;
 	PluginSDK::Logger::LoggerAPI* loggerAPI_ = nullptr;
 
 	std::filesystem::path configPath_;

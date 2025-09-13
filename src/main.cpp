@@ -1,10 +1,10 @@
-#include "PLUGIN_NAME.h"
+#include "NeoSTAND.h"
 
 extern "C" PLUGIN_API PluginSDK::BasePlugin *CreatePluginInstance()
 {
     try
     {
-        return new PLUGIN_NAMESPACE::PLUGIN_NAME();
+        return new stand::NeoSTAND();
     }
     catch (const std::exception &e)
     {

@@ -129,8 +129,78 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NeoVSID-${{ matrix.platform }}-${{ matrix.architecture }}
+          name: NeoSTAND-${{ matrix.platform }}-${{ matrix.architecture }}
           path: |
-            lib/NeoVSID*
-            bin/NeoVSID*
-            bin/${{ env.build_type }}/NeoVSID*
+            lib/NeoSTAND*
+            bin/NeoSTAND*
+            bin/${{ env.build_type }}/NeoSTAND*
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_builds
+
+      # - name: Prepare config files for packaging
+      #   run: |
+      #     mkdir -p plugins/NeoSTAND
+      #     cp src/config/config.json plugins/NeoSTAND/
+      #     cp src/config/AircraftData.json plugins/NeoSTAND/
+
+      - name: List downloaded files
+        run: ls -R all_builds
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+
+      - name: Install NeoRadar CLI
+        run: yarn global add https://github.com/neoradar-project/cli.git
+
+      - name: Organize plugin binaries for packaging
+        run: |
+          mkdir -p all_builds/NeoSTAND
+          find all_builds -type f -name 'NeoSTAND*' -exec cp {} all_builds/NeoSTAND/ \;
+
+      - name: List files after organizing
+        run: ls -R all_builds
+
+      - name: Rename binaries by platform and architecture
+        shell: bash
+        run: |
+          for f in all_builds/NeoSTAND/*; do
+            ext="${f##*.}"
+            base=$(basename "$f")
+            # Detect platform and arch from the filename or from the file extension
+            if [[ "$base" == *"dylib" ]]; then
+              # macOS
+              if [[ "$base" == *"arm64"* ]]; then
+                mv "$f" "all_builds/NeoSTAND/mac-arm64.dylib"
+              else
+                mv "$f" "all_builds/NeoSTAND/mac-x64.dylib"
+              fi
+            elif [[ "$base" == *"so" ]]; then
+              # Linux
+              mv "$f" "all_builds/NeoSTAND/linux-x64.so"
+            elif [[ "$base" == *"dll" ]]; then
+              # Windows
+              mv "$f" "all_builds/NeoSTAND/windows-x64.dll"
+            fi
+          done
+
+      - name: Package .nrplugin
+        run: |
+          echo y | neoradar-cli create-plugin-archives ./all_builds
+
+      - name: Upload final .nrplugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins
+          path: plugins

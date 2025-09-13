@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
-project(PLUGIN_NAME VERSION "0.0.1")
+project(NeoSTAND VERSION "0.0.1")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,18 +41,17 @@ include_directories(
 # Find external dependencies
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-
 add_subdirectory(External/NeoRadarSDK)
 
 # Source files
 # To set after starting development
 set(SOURCES
-    src/PLUGIN_NAME.cpp
-    src/PLUGIN_NAME.cpp
+    src/NeoSTAND.cpp
+    src/main.cpp
 )
 
 # Define the plugin library
-add_library(${PROJECT_NAME} SHARED ${SOURCES}  "")
+add_library(${PROJECT_NAME} SHARED ${SOURCES}  "src/core/DataManager.cpp")
 
 
 # Link dependencies

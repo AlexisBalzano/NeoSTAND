@@ -1,8 +1,8 @@
 #pragma once
-#include "PLUGIN_NAME.h"
+#include "NeOSTAND.h"
 
-namespace PLUGIN_NAMESPACE {
-void PLUGIN_NAME::RegisterTagActions()
+namespace stand {
+void NeoSTAND::RegisterTagActions()
 {
     PluginSDK::Tag::TagActionDefinition tagDef;
 
@@ -26,10 +26,10 @@ void PLUGIN_NAME::RegisterTagActions()
     dropdownComponent.requiresInput = false;
     dropdownDef.components.push_back(dropdownComponent);
 
-    tagInterface_->SetActionDropdown(requestMenuId_, dropdownDef);
+    //tagInterface_->SetActionDropdown(requestMenuId_, dropdownDef);
 }
 
-void PLUGIN_NAME::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
+void NeoSTAND::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
 {
     if (!initialized_ || !event )
     {
@@ -41,7 +41,7 @@ void PLUGIN_NAME::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
     TagProcessing(event->callsign, event->actionId, input);
 }
 
-void PLUGIN_NAME::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *event)
+void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *event)
 {
     if (!initialized_ || !event )
     {
@@ -50,7 +50,7 @@ void PLUGIN_NAME::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent 
 
 }
 
-void PLUGIN_NAME::TagProcessing(const std::string &callsign, const std::string &actionId, const std::string &userInput)
+void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &actionId, const std::string &userInput)
 {
     
 }

@@ -1,4 +1,4 @@
-# PLUGIN_NAME_
+# NeoSTAND_
 PLUGIN_DESCRIPTION_ for *NeoRadar* ATC Client <br>
 <br>
 

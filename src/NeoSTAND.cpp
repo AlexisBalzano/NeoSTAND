@@ -1,4 +1,4 @@
-#include "NeoVSID.h"
+#include "NeoSTAND.h"
 #include <numeric>
 #include <chrono>
 #include <httplib.h>
@@ -14,12 +14,12 @@
 #define LOG_DEBUG(loglevel, message) void(0)
 #endif
 
-using namespace PLUGIN_NAMESPACE;
+using namespace stand;
 
-PLUGIN_NAME::PLUGIN_NAME() : m_stop(false), controllerDataAPI_(nullptr) {};
-PLUGIN_NAME::~PLUGIN_NAME() = default;
+NeoSTAND::NeoSTAND() : m_stop(false), controllerDataAPI_(nullptr) {};
+NeoSTAND::~NeoSTAND() = default;
 
-void PLUGIN_NAME::Initialize(const PluginMetadata &metadata, CoreAPI *coreAPI, ClientInformation info)
+void NeoSTAND::Initialize(const PluginMetadata &metadata, CoreAPI *coreAPI, ClientInformation info)
 {
     metadata_ = metadata;
     clientInfo_ = info;
@@ -37,7 +37,7 @@ void PLUGIN_NAME::Initialize(const PluginMetadata &metadata, CoreAPI *coreAPI, C
 #ifndef DEV
 	std::pair<bool, std::string> updateAvailable = newVersionAvailable();
 	if (updateAvailable.first) {
-		DisplayMessage("A new version of PLUGIN_NAME is available: " + updateAvailable.second + " (current version: " + PLUGIN_NAME_VERSION + ")", "");
+		DisplayMessage("A new version of NeoSTAND is available: " + updateAvailable.second + " (current version: " + NEOSTAND_VERSION + ")", "");
 	}
 #endif // !DEV
 
@@ -51,18 +51,18 @@ void PLUGIN_NAME::Initialize(const PluginMetadata &metadata, CoreAPI *coreAPI, C
     }
     catch (const std::exception &e)
     {
-        logger_->error("Failed to initialize PLUGIN_NAME: " + std::string(e.what()));
+        logger_->error("Failed to initialize NeoSTAND: " + std::string(e.what()));
     }
 
     this->m_stop = false;
-    this->m_worker = std::thread(&PLUGIN_NAME::run, this);
+    this->m_worker = std::thread(&NeoSTAND::run, this);
 }
 
-std::pair<bool, std::string> PLUGIN_NAMESPACE::PLUGIN_NAME::newVersionAvailable()
+std::pair<bool, std::string> stand::NeoSTAND::newVersionAvailable()
 {
     httplib::SSLClient cli("api.github.com");
-    httplib::Headers headers = { {"User-Agent", "PLUGIN_NAMEversionChecker"} };
-    std::string apiEndpoint = "/repos/AlexisBalzano/PLUGIN_NAME/releases/latest";
+    httplib::Headers headers = { {"User-Agent", "NeoSTANDversionChecker"} };
+    std::string apiEndpoint = "/repos/AlexisBalzano/NeoSTAND/releases/latest";
 
     auto res = cli.Get(apiEndpoint.c_str(), headers);
     if (res && res->status == 200) {
@@ -70,12 +70,12 @@ std::pair<bool, std::string> PLUGIN_NAMESPACE::PLUGIN_NAME::newVersionAvailable(
         {
             auto json = nlohmann::json::parse(res->body);
             std::string latestVersion = json["tag_name"];
-            if (latestVersion != NEOVSID_VERSION) {
-                logger_->warning("A new version of PLUGIN_NAME is available: " + latestVersion + " (current version: " + PLUGIN_NAME_VERSION + ")");
+            if (latestVersion != NEOSTAND_VERSION) {
+                logger_->warning("A new version of NeoSTAND is available: " + latestVersion + " (current version: " + NEOSTAND_VERSION + ")");
                 return { true, latestVersion };
             }
             else {
-                logger_->log(Logger::LogLevel::Info, "PLUGIN_NAME is up to date.");
+                logger_->log(Logger::LogLevel::Info, "NeoSTAND is up to date.");
                 return { false, "" };
             }
         }
@@ -86,17 +86,17 @@ std::pair<bool, std::string> PLUGIN_NAMESPACE::PLUGIN_NAME::newVersionAvailable(
         }
     }
     else {
-        logger_->error("Failed to check for PLUGIN_NAME updates. HTTP status: " + std::to_string(res ? res->status : 0));
+        logger_->error("Failed to check for NeoSTAND updates. HTTP status: " + std::to_string(res ? res->status : 0));
         return { false, "" };
     }
 }
 
-void PLUGIN_NAME::Shutdown()
+void NeoSTAND::Shutdown()
 {
     if (initialized_)
     {
         initialized_ = false;
-        LOG_DEBUG(Logger::LogLevel::Info, "PLUGIN_NAME shutdown complete");
+        LOG_DEBUG(Logger::LogLevel::Info, "NeoSTAND shutdown complete");
     }
 
 	if (dataManager_) dataManager_.reset();
@@ -107,34 +107,40 @@ void PLUGIN_NAME::Shutdown()
     this->unegisterCommand();
 }
 
-void vsid::PLUGIN_NAME::Reset()
+void stand::NeoSTAND::Reset()
 {
     autoModeState = true;
-	requestingClearance.clear();
-	requestingPush.clear();
-	requestingTaxi.clear();
-	callsignsScope.clear();
 }
 
-void PLUGIN_NAME::DisplayMessage(const std::string &message, const std::string &sender) {
+void NeoSTAND::run() {
+    int counter = 0;
+    while (!this->m_stop) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        counter++;
+        OnTimer(counter);
+	}
+}
+
+
+void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sender) {
     Chat::ClientTextMessageEvent textMessage;
-    textMessage.sentFrom = "PLUGIN_NAME";
+    textMessage.sentFrom = "NeoSTAND";
     (sender.empty()) ? textMessage.message = ": " + message : textMessage.message = sender + ": " + message;
     textMessage.useDedicatedChannel = true;
 
     chatAPI_->sendClientMessage(textMessage);
 }
 
-void PLUGIN_NAME::runScopeUpdate() {
-	std::lock_guard<std::mutex> lock(callsignsMutex);
-    UpdateTagItems();
+void NeoSTAND::runScopeUpdate() {
+	//std::lock_guard<std::mutex> lock(callsignsMutex);
+    //UpdateTagItems();
 }
 
-void PLUGIN_NAME::OnTimer(int Counter) {
+void NeoSTAND::OnTimer(int Counter) {
     if (Counter % 5 == 0 && autoModeState) this->runScopeUpdate();
 }
 
-PluginSDK::PluginMetadata PLUGIN_NAME::GetMetadata() const
+PluginSDK::PluginMetadata NeoSTAND::GetMetadata() const
 {
-    return {"PLUGIN_NAME", PLUGIN_VERSION, "PLUGIN_AUTHOR"};
+    return {"NeoSTAND", PLUGIN_VERSION, "French vACC"};
 }
