@@ -36,6 +36,7 @@ namespace stand {
 
         // Command handling
         void TagProcessing(const std::string& callsign, const std::string& actionId, const std::string& userInput = "");
+		bool toggleAutoMode();
 
 		// API Accessors
         PluginSDK::Logger::LoggerAPI* GetLogger() const { return logger_; }
@@ -56,13 +57,14 @@ namespace stand {
         // Command IDs
         std::string versionCommandId_;
         std::string helpCommandId_;
+		std::string toggleModeCommandId_;
 
     private:
         // Plugin state
         bool initialized_ = false;
         std::thread m_worker;
         bool m_stop;
-		bool autoModeState = true;
+		bool autoMode = true;
 
         // APIs
         PluginMetadata metadata_;

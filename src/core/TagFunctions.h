@@ -54,4 +54,9 @@ void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &act
 {
     
 }
+inline bool NeoSTAND::toggleAutoMode()
+{
+    autoMode = !autoMode;
+	return autoMode;
+}
 }  // namespace vsid

@@ -109,7 +109,7 @@ void NeoSTAND::Shutdown()
 
 void stand::NeoSTAND::Reset()
 {
-    autoModeState = true;
+    autoMode = true;
 }
 
 void NeoSTAND::run() {
@@ -137,7 +137,7 @@ void NeoSTAND::runScopeUpdate() {
 }
 
 void NeoSTAND::OnTimer(int Counter) {
-    if (Counter % 5 == 0 && autoModeState) this->runScopeUpdate();
+    if (Counter % 5 == 0 && autoMode) this->runScopeUpdate();
 }
 
 PluginSDK::PluginMetadata NeoSTAND::GetMetadata() const

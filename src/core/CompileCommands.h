@@ -24,6 +24,13 @@ void NeoSTAND::RegisterCommand() {
 		definition.parameters.clear();
 
         helpCommandId_ = chatAPI_->registerCommand(definition.name, definition, CommandProvider_);
+        
+        definition.name = "stand toggle";
+        definition.description = "Toggle auto stand assignation";
+        definition.lastParameterHasSpaces = false;
+		definition.parameters.clear();
+
+        toggleModeCommandId_ = chatAPI_->registerCommand(definition.name, definition, CommandProvider_);
     }
     catch (const std::exception& ex)
     {
@@ -37,6 +44,7 @@ inline void NeoSTAND::unegisterCommand()
     {
         chatAPI_->unregisterCommand(versionCommandId_);
         chatAPI_->unregisterCommand(helpCommandId_);
+        chatAPI_->unregisterCommand(toggleModeCommandId_);
         CommandProvider_.reset();
 	}
 }
@@ -53,6 +61,7 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
         for (const char* line : {
           "NeoRAS available commands:",
           ".stand version",
+		  ".stand toggle",
             })
         {
             neoSTAND_->DisplayMessage(line);
@@ -61,6 +70,12 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
 
         return { true, std::nullopt };
 	}
+    else if (commandId == neoSTAND_->toggleModeCommandId_)
+    {
+		bool state = neoSTAND_->toggleAutoMode();
+		neoSTAND_->DisplayMessage("NeoSTAND Auto Mode: " + std::string(state ? "ON" : "OFF"));
+        return { true, std::nullopt };
+    }
     else {
         return { false, "error" };
     }
