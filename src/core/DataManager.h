@@ -17,7 +17,7 @@ class DataManager {
 public:
 	enum class AircraftType
 	{
-		commercial = 0,
+		airliner = 0,
 		generalAviation,
 		helicopter,
 		military,
@@ -47,15 +47,16 @@ public:
 
 	static std::filesystem::path getDllDirectory();
 	void DisplayMessageFromDataManager(const std::string& message, const std::string& sender = "");
-	int retrieveConfigJson(const std::string& oaci);
-	bool retrieveCorrectConfigJson(const std::string& oaci);
+	int retrieveConfigJson(const std::string& icao);
+	bool retrieveCorrectConfigJson(const std::string& icao);
 	bool isCorrectJsonVersion(const std::string& config_version, const std::string& fileName);
 	void PopulateActiveAirports();
 	void updateAllPilots();
 	void updatePilot(const std::string& callsign);
-	void voidremoveAllPilots();
+	void removeAllPilots();
 	bool removePilot(const std::string& callsign);
 	void clearPilots();
+	void assignStands(Pilot& pilot);
 
 	std::vector<std::string> getAllActiveAirports();
 	std::vector<Pilot> getAllPilots();
@@ -63,7 +64,7 @@ public:
 	Pilot getPilotByCallsign(const std::string& callsign);
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
 	
-	bool isConcernedAircraft(const std::string& callsign);
+	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isShengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
 

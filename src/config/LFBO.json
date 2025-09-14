@@ -1,0 +1,253 @@
+{
+  "ICAO": "LFBO",
+  "STAND": {
+    "V10": {
+      "coordinates": "N043.37.59.110:E001.22.09.990:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U42": {
+      "coordinates": "N043.37.58.273:E001.22.08.319:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U41": {
+      "coordinates": "N043.37.57.638:E001.22.07.835:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U40": {
+      "coordinates": "N043.37.56.312:E001.22.08.627:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U32": {
+      "coordinates": "N043.37.55.504:E001.22.09.155:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U31": {
+      "coordinates": "N043.37.54.552:E001.22.10.078:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U30": {
+      "coordinates": "N043.37.53.687:E001.22.10.826:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U22": {
+      "coordinates": "N043.37.53.341:E001.22.12.145:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U21": {
+      "coordinates": "N043.37.52.879:E001.22.13.332:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U20": {
+      "coordinates": "N043.37.52.706:E001.22.14.256:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U12": {
+      "coordinates": "N043.37.52.677:E001.22.15.487:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U11": {
+      "coordinates": "N043.37.52.533:E001.22.16.851:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "U10": {
+      "coordinates": "N043.37.52.562:E001.22.18.258:25",
+      "use": "A",
+      "schengen": false,
+      "callsign": [ "RYR", "RAM", "BEE", "KLM" ],
+      "code": "E",
+      "priority": 1
+    },
+    "E62": {
+      "coordinates": "N043.37.50.081:E001.22.19.797:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E60": {
+      "coordinates": "N043.37.49.071:E001.22.21.072:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E52": {
+      "coordinates": "N043.37.48.379:E001.22.21.556:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E54": {
+      "coordinates": "N043.37.47.860:E001.22.22.216:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E50": {
+      "coordinates": "N043.37.46.677:E001.22.23.491:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E42": {
+      "coordinates": "N043.37.45.322:E001.22.24.766:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E40": {
+      "coordinates": "N043.37.44.225:E001.22.26.130:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E30": {
+      "coordinates": "N043.37.43.869:E001.22.28.025:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E20": {
+      "coordinates": "N043.37.44.377:E001.22.30.171:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "E10": {
+      "coordinates": "N043.37.44.723:E001.22.31.895:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "AFR", "BAW" ],
+      "code": "C",
+      "priority": 1
+    },
+    "F10": {
+      "coordinates": "N043.37.43.800:E001.22.33.232:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "EZY", "EJU", "EZS", "VOE" ],
+      "code": "C",
+      "priority": 3
+    },
+    "F20": {
+      "coordinates": "N043.37.42.485:E001.22.34.499:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "EZY", "EJU", "EZS", "VOE" ],
+      "code": "C",
+      "priority": 3
+    },
+    "F30": {
+      "coordinates": "N043.37.41.215:E001.22.35.800:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "EZY", "EJU", "EZS", "VOE" ],
+      "code": "C",
+      "priority": 3
+    },
+    "F40": {
+      "coordinates": "N043.37.39.946:E001.22.37.032:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "EZY", "EJU", "EZS", "VOE" ],
+      "code": "C",
+      "priority": 3
+    },
+    "F50": {
+      "coordinates": "N043.37.38.746:E001.22.38.298:25",
+      "use": "A",
+      "schengen": true,
+      "callsign": [ "EZY", "EJU", "EZS", "VOE" ],
+      "code": "C",
+      "priority": 1
+    },
+    "K32": {
+      "coordinates": "N043.37.37.685:E001.22.32.282:25",
+      "use": "A",
+      "schengen": true,
+      "atyp": "AT42",
+      "code": "E",
+      "priority": 1
+    },
+    "K22": {
+      "coordinates": "N043.37.38.769:E001.22.31.297:25",
+      "use": "A",
+      "schengen": true,
+      "atyp": "AT42",
+      "code": "E",
+      "priority": 1
+    },
+    "K12": {
+      "coordinates": "N043.37.40.015:E001.22.30.031:25",
+      "use": "A",
+      "schengen": true,
+      "atyp": "AT42",
+      "code": "E",
+      "priority": 1
+    }
+  }
+}

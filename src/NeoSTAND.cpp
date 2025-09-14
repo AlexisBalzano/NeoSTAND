@@ -136,12 +136,10 @@ void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
 
-    // Assign Stands
-    //dataManager_->assignStands();
-
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
-	// Update TAG items for each pilot
-    for (const auto& pilot : pilots) {
+	
+    for (auto& pilot : pilots) {
+        if (pilot.stand.empty()) dataManager_->assignStands(pilot);
         this->UpdateTagItems(pilot.callsign);
 	}
 }
@@ -153,20 +151,24 @@ void NeoSTAND::OnTimer(int Counter) {
 void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfigurationsUpdatedEvent* event)
 {
     ClearAllTagCache();
-    dataManager_->voidremoveAllPilots();
+    dataManager_->removeAllPilots();
     dataManager_->PopulateActiveAirports();
-    LOG_DEBUG(Logger::LogLevel::Info, "Airport configurations updated.");
 }
 
 void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
 {
     for (const auto& aircraft : event->aircrafts) {
+        if (aircraft.callsign.empty())
+            continue;
+
 		UpdateTagItems(aircraft.callsign);
     }
 }
 
 void stand::NeoSTAND::OnFlightplanUpdated(const Flightplan::FlightplanUpdatedEvent* event)
 {
+	dataManager_->removePilot(event->callsign); // Force recompute
+	ClearTagCache(event->callsign);
     UpdateTagItems(event->callsign);
 }
 

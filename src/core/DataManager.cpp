@@ -84,9 +84,9 @@ void DataManager::DisplayMessageFromDataManager(const std::string& message, cons
 }
 
 	
-int DataManager::retrieveConfigJson(const std::string& oaci)
+int DataManager::retrieveConfigJson(const std::string& icao)
 {
-    std::string fileName = oaci + ".json";
+    std::string fileName = icao + ".json";
     std::filesystem::path jsonPath = configPath_ / "NeoSTAND" / fileName;
 
     std::ifstream config(jsonPath);
@@ -122,10 +122,10 @@ int DataManager::retrieveConfigJson(const std::string& oaci)
     return 0;
 }
 
-bool DataManager::retrieveCorrectConfigJson(const std::string& oaci)
+bool DataManager::retrieveCorrectConfigJson(const std::string& icao)
 {
-	if (!configJson_.contains(oaci) || configJson_.empty()) {
-		if (retrieveConfigJson(oaci) == -1) return false;
+	if (!configJson_.contains(icao) || configJson_.empty()) {
+		if (retrieveConfigJson(icao) == -1) return false;
 	}
 	return true;
 }
@@ -155,6 +155,94 @@ void DataManager::clearPilots()
 {
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	pilots_.clear();
+}
+
+void DataManager::assignStands(Pilot& pilot)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	// Check if configJSON is already the right one, if not, retrieve it
+	if (!retrieveCorrectConfigJson(pilot.destination)) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning CFL for: " + pilot.destination);
+		pilot.stand = "";
+		return;
+	}
+	
+	nlohmann::json standsJson;
+	if (configJson_.contains("STAND"))
+		standsJson = configJson_["STAND"];
+	else {
+		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + pilot.destination);
+		pilot.stand = "";
+		return;
+	}
+
+	// Filter stands based on criteria
+	auto it = standsJson.begin();
+
+	while (it != standsJson.end()) {
+		const auto& stand = *it;
+		// Check WTC
+		if (stand.contains("WTC")) {
+			std::string wtc = stand["WTC"].get<std::string>();
+			if (wtc != "A" && wtc != pilot.aircraftWTC) {
+				it = standsJson.erase(it);
+				continue;
+			}
+		}
+
+		// Check USE
+		if (stand.contains("use")) {
+			std::string use = stand["use"].get<std::string>();
+			std::string pilotType;
+			switch (pilot.aircraftType) {
+			case AircraftType::airliner: pilotType = "A"; break;
+			case AircraftType::generalAviation: pilotType = "P"; break;
+			case AircraftType::helicopter: pilotType = "H"; break;
+			case AircraftType::military: pilotType = "M"; break;
+			case AircraftType::cargo: pilotType = "C"; break;
+			default: pilotType = ""; break;
+			}
+			if (use != pilotType) {
+				it = standsJson.erase(it);
+				continue;
+			}
+		}
+
+		// Check SHENGEN
+		if (stand.contains("shengen")) {
+			bool shengen = stand["shengen"].get<bool>();
+			if (shengen != pilot.isShengen) {
+				it = standsJson.erase(it);
+				continue;
+			}
+		}
+
+		// Check NATIONAL
+		if (stand.contains("national")) {
+			bool national = stand["national"].get<bool>();
+			if (national != pilot.isNational) {
+				it = standsJson.erase(it);
+				continue;
+			}
+		}
+
+		// Check if stand is occupied
+		// Check if stand is blocked
+
+		++it; // Only increment if not erased
+	}
+
+	if (standsJson.empty()) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot.callsign + " at " + pilot.destination);
+		pilot.stand = "";
+		return;
+	}
+
+	// Randomly select a stand from the filtered list
+
+
+
+	// Assigner le stand au pilot
 }
 
 void DataManager::PopulateActiveAirports()
@@ -205,10 +293,10 @@ DataManager::Pilot DataManager::getPilotByCallsign(const std::string& callsign)
 
 void DataManager::updateAllPilots()
 {
-	std::vector<Aircraft::Aircraft> aircrafts = aircraftAPI_->getAll();
+	std::vector<Flightplan::Flightplan> flightplans = flightplanAPI_->getAll();
 
-	for (const auto& aircraft : aircrafts) {
-		updatePilot(aircraft.callsign);
+	for (const auto& fp : flightplans) {
+		updatePilot(fp.callsign);
 	}
 }
 
@@ -216,22 +304,20 @@ void DataManager::updatePilot(const std::string& callsign)
 {
 	if (callsign.empty()) return;
 	
-	{
-		std::lock_guard<std::mutex> lock(dataMutex_);
-		pilots_.erase(std::remove_if(pilots_.begin(), pilots_.end(),
-			[&callsign](const Pilot& p) { return p.callsign == callsign; }), pilots_.end());
-	}
-
 	std::optional<Aircraft::Aircraft> aircraftOpt = aircraftAPI_->getByCallsign(callsign);
 	if (!aircraftOpt.has_value()) return;
 	
 	Aircraft::Aircraft aircraft = *aircraftOpt;
 	if (aircraft.position.altitude > stand::MAX_ALTITUDE) return;
 
-	std::optional<double> distanceToDest = aircraftAPI_->getDistanceToDestination(aircraft.callsign);
-	if (!distanceToDest.has_value() && *distanceToDest > stand::MAX_DISTANCE) return;
+	std::optional<Flightplan::Flightplan> flightplan = flightplanAPI_->getByCallsign(aircraft.callsign);
+	if (!flightplan.has_value()) return;
 
-	if (!isConcernedAircraft(aircraft.callsign)) return;
+	std::optional<double> distanceToDest = aircraftAPI_->getDistanceToDestination(aircraft.callsign);
+	if (!distanceToDest.has_value() || *distanceToDest > stand::MAX_DISTANCE) return;
+
+	if (!isConcernedAircraft(*flightplan)) return;
+
 	{
 		std::lock_guard<std::mutex> lock(dataMutex_);
 		if (!pilots_.empty() && std::any_of(pilots_.begin(), pilots_.end(),
@@ -239,8 +325,6 @@ void DataManager::updatePilot(const std::string& callsign)
 			return; // Skip if pilot already exists
 		}
 	}
-	std::optional<Flightplan::Flightplan> flightplan = flightplanAPI_->getByCallsign(aircraft.callsign);
-	if (!flightplan.has_value()) return;
 
 	Pilot pilot;
 	pilot.callsign = aircraft.callsign;
@@ -257,7 +341,7 @@ void DataManager::updatePilot(const std::string& callsign)
 	}
 }
 
-void DataManager::voidremoveAllPilots()
+void DataManager::removeAllPilots()
 {
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	pilots_.clear();
@@ -302,18 +386,15 @@ DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightp
 	};
 	if (gaTypes.contains(acType)) return AircraftType::generalAviation;
 
-	return AircraftType::commercial;
+	return AircraftType::airliner;
 }
 
-bool DataManager::isConcernedAircraft(const std::string& callsign)
+bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)
 {
-	std::optional<Flightplan::Flightplan> flightplan = flightplanAPI_->getByCallsign(callsign);
-	if (!flightplan.has_value()) return false;
-
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	std::vector<std::string> activeAirports = activeAirports_;
-	auto itOrigin = std::find(activeAirports.begin(), activeAirports.end(), flightplan->origin);
-	auto itDestination = std::find(activeAirports.begin(), activeAirports.end(), flightplan->destination);
+	auto itOrigin = std::find(activeAirports.begin(), activeAirports.end(), fp.origin);
+	auto itDestination = std::find(activeAirports.begin(), activeAirports.end(), fp.destination);
 	if (itOrigin != activeAirports.end() || itDestination != activeAirports.end())
 		return true;
 	return false;

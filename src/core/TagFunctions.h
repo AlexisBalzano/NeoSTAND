@@ -58,6 +58,7 @@ void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &act
         DisplayMessage("Assigning Stand for " + callsign, "TagProcessing");
 	}
 }
+
 inline bool NeoSTAND::toggleAutoMode()
 {
     autoMode = !autoMode;
