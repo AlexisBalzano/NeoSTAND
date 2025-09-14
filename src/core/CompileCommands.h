@@ -31,6 +31,13 @@ void NeoSTAND::RegisterCommand() {
 		definition.parameters.clear();
 
         toggleModeCommandId_ = chatAPI_->registerCommand(definition.name, definition, CommandProvider_);
+        
+        definition.name = "stand airports";
+        definition.description = "Display all active airports";
+        definition.lastParameterHasSpaces = false;
+		definition.parameters.clear();
+
+        airportsCommandId_ = chatAPI_->registerCommand(definition.name, definition, CommandProvider_);
     }
     catch (const std::exception& ex)
     {
@@ -45,6 +52,7 @@ inline void NeoSTAND::unegisterCommand()
         chatAPI_->unregisterCommand(versionCommandId_);
         chatAPI_->unregisterCommand(helpCommandId_);
         chatAPI_->unregisterCommand(toggleModeCommandId_);
+        chatAPI_->unregisterCommand(airportsCommandId_);
         CommandProvider_.reset();
 	}
 }
@@ -74,6 +82,22 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
     {
 		bool state = neoSTAND_->toggleAutoMode();
 		neoSTAND_->DisplayMessage("NeoSTAND Auto Mode: " + std::string(state ? "ON" : "OFF"));
+        return { true, std::nullopt };
+    }
+    else if (commandId == neoSTAND_->airportsCommandId_)
+    {
+        std::vector<std::string> airports = neoSTAND_->GetDataManager()->getAllActiveAirports();
+        if (airports.empty()) {
+            neoSTAND_->DisplayMessage("No active airports found.");
+        }
+        else {
+            airports.emplace(airports.begin(), "Active Airports:");
+            for (const std::string& line : airports)
+            {
+                neoSTAND_->DisplayMessage(line);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
         return { true, std::nullopt };
     }
     else {

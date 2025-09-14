@@ -51,7 +51,7 @@ set(SOURCES
 )
 
 # Define the plugin library
-add_library(${PROJECT_NAME} SHARED ${SOURCES}  "src/core/DataManager.cpp")
+add_library(${PROJECT_NAME} SHARED ${SOURCES}  "src/core/DataManager.cpp" "src/utils/Color.h")
 
 
 # Link dependencies

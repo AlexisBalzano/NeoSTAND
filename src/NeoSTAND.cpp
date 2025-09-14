@@ -99,10 +99,11 @@ void NeoSTAND::Shutdown()
         LOG_DEBUG(Logger::LogLevel::Info, "NeoSTAND shutdown complete");
     }
 
-	if (dataManager_) dataManager_.reset();
-
     this->m_stop = true;
-    this->m_worker.join();
+    if (this->m_worker.joinable())
+        this->m_worker.join();
+
+    if (dataManager_) dataManager_.reset();
 
     this->unegisterCommand();
 }
@@ -132,12 +133,110 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 }
 
 void NeoSTAND::runScopeUpdate() {
-	//std::lock_guard<std::mutex> lock(callsignsMutex);
-    //UpdateTagItems();
+    if (!dataManager_) return;
+	dataManager_->updateAllPilots();
+
+    // Assign Stands
+    //dataManager_->assignStands();
+
+	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
+	// Update TAG items for each pilot
+    for (const auto& pilot : pilots) {
+        this->UpdateTagItems(pilot.callsign);
+	}
 }
 
 void NeoSTAND::OnTimer(int Counter) {
     if (Counter % 5 == 0 && autoMode) this->runScopeUpdate();
+}
+
+void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfigurationsUpdatedEvent* event)
+{
+    ClearAllTagCache();
+    dataManager_->voidremoveAllPilots();
+    dataManager_->PopulateActiveAirports();
+    LOG_DEBUG(Logger::LogLevel::Info, "Airport configurations updated.");
+}
+
+void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
+{
+    for (const auto& aircraft : event->aircrafts) {
+		UpdateTagItems(aircraft.callsign);
+    }
+}
+
+void stand::NeoSTAND::OnFlightplanUpdated(const Flightplan::FlightplanUpdatedEvent* event)
+{
+    UpdateTagItems(event->callsign);
+}
+
+void stand::NeoSTAND::OnFlightplanRemoved(const Flightplan::FlightplanRemovedEvent* event)
+{
+    dataManager_->removePilot(event->callsign);
+	ClearTagCache(event->callsign);
+}
+
+void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnectedEvent* event)
+{
+    dataManager_->removePilot(event->callsign);
+	ClearTagCache(event->callsign);
+}
+
+void NeoSTAND::UpdateTagItems(std::string callsign) {
+	dataManager_->updatePilot(callsign);
+    DataManager::Pilot pilot = dataManager_->getPilotByCallsign(callsign);
+    if (pilot.empty()) return;
+
+    Tag::TagContext tagContext;
+    tagContext.callsign = callsign;
+    tagContext.colour = ColorizeStand();
+
+	std::string stand = pilot.stand.empty() ? "N/A" : pilot.stand;
+
+    updateTagValueIfChanged(callsign, standItemId_, stand, tagContext);
+}
+
+bool NeoSTAND::updateTagValueIfChanged(const std::string& callsign, const std::string& tagId, const std::string& value, Tag::TagContext& context)
+{
+    bool needsUpdate = false;
+    
+    {
+        std::lock_guard<std::mutex> lock(tagCacheMutex_);
+        auto& perCallsign = tagCache_[callsign];
+        auto it = perCallsign.find(tagId);
+        if (it == perCallsign.end()
+            || it->second.value != value
+            || it->second.colour != context.colour
+            || it->second.background != context.backgroundColour)
+        {
+            needsUpdate = true;
+        }
+    }
+
+    if (!needsUpdate)
+        return false;
+
+    tagInterface_->UpdateTagValue(tagId, value, context);
+    
+    {
+        std::lock_guard<std::mutex> lock(tagCacheMutex_);
+        auto& perCallsign = tagCache_[callsign];
+        perCallsign[tagId] = { value, context.colour, context.backgroundColour };
+    }
+
+    return true;
+}
+
+void NeoSTAND::ClearTagCache(const std::string& callsign)
+{
+    std::lock_guard<std::mutex> lock(tagCacheMutex_);
+    tagCache_.erase(callsign);
+}
+
+void NeoSTAND::ClearAllTagCache()
+{
+    std::lock_guard<std::mutex> lock(tagCacheMutex_);
+    tagCache_.clear();
 }
 
 PluginSDK::PluginMetadata NeoSTAND::GetMetadata() const

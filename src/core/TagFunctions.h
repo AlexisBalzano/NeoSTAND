@@ -7,26 +7,26 @@ void NeoSTAND::RegisterTagActions()
     PluginSDK::Tag::TagActionDefinition tagDef;
 
     // TAG function def
-    tagDef.name = "ITEM_NAME";
-	tagDef.description = "ITEM_DESCRIPTION";
+    tagDef.name = "ASSIGN";
+	tagDef.description = "Assign Stand";
 	tagDef.requiresInput = false;
-    tagActionId_ = tagInterface_->RegisterTagAction(tagDef);
+    assignActionId_ = tagInterface_->RegisterTagAction(tagDef);
     
 	// Dropdown Menu def
     PluginSDK::Tag::DropdownDefinition dropdownDef;
-    dropdownDef.title = "MENU TITLE";
+    dropdownDef.title = "STAND SELECT";
     dropdownDef.width = 75;
     dropdownDef.maxHeight = 150;
 
     PluginSDK::Tag::DropdownComponent dropdownComponent;
 
-    dropdownComponent.id = "Button1";
+    dropdownComponent.id = "STAND1";
     dropdownComponent.type = PluginSDK::Tag::DropdownComponentType::Button;
-    dropdownComponent.text = "Text";
+    dropdownComponent.text = "48A";
     dropdownComponent.requiresInput = false;
     dropdownDef.components.push_back(dropdownComponent);
 
-    //tagInterface_->SetActionDropdown(requestMenuId_, dropdownDef);
+    tagInterface_->SetActionDropdown(standMenuId_, dropdownDef);
 }
 
 void NeoSTAND::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
@@ -48,11 +48,15 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
         return;
     }
 
+	DisplayMessage("Assigning Stand 48A for: " + event->callsign);
 }
 
 void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &actionId, const std::string &userInput)
 {
-    
+    if (actionId == assignActionId_)
+    {
+        DisplayMessage("Assigning Stand for " + callsign, "TagProcessing");
+	}
 }
 inline bool NeoSTAND::toggleAutoMode()
 {

@@ -11,7 +11,6 @@
 #define LOG_DEBUG(loglevel, message) void(0)
 #endif
 
-using namespace stand;
 
 namespace stand {
 void NeoSTAND::RegisterTagItems()
@@ -19,13 +18,15 @@ void NeoSTAND::RegisterTagItems()
     PluginSDK::Tag::TagItemDefinition tagDef;
 
     // Tag item def
-    tagDef.name = "TAG ITEM";
-    tagDef.defaultValue = "PLACEHOLDER";
+    tagDef.name = "STAND";
+    tagDef.defaultValue = "---";
     std::string tagID = tagInterface_->RegisterTagItem(tagDef);
-    tagItemId_ = tagID;
+    standItemId_ = tagID;
 }
 
+Color NeoSTAND::ColorizeStand() {
+	//TODO: implement color logic based on stand assignment status
+	return std::array<unsigned int, 3>{255, 255, 255};
+}
 
-// TAG ITEM UPDATE FUNCTIONS
-
-}  // namespace vsid
+}  // namespace stand
