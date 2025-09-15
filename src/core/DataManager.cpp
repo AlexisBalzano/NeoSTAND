@@ -59,6 +59,8 @@ void DataManager::clearData()
 	configPath_.clear();
 	pilots_.clear();
 	activeAirports_.clear();
+	occupiedStands_.clear();
+	blockedStands_.clear();
 	if (aircraftAPI_)
 		aircraftAPI_ = nullptr;
 	if (flightplanAPI_)
@@ -227,7 +229,16 @@ void DataManager::assignStands(Pilot& pilot)
 		}
 
 		// Check if stand is occupied
+		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it](const Stand& stand){ return it.key() == stand.name;}) != occupiedStands_.end()) {
+			it = standsJson.erase(it);
+			continue;
+		}
+
 		// Check if stand is blocked
+		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it](const Stand& stand) { return it.key() == stand.name; }) != blockedStands_.end()) {
+			it = standsJson.erase(it);
+			continue;
+		}
 
 		++it; // Only increment if not erased
 	}
@@ -239,10 +250,29 @@ void DataManager::assignStands(Pilot& pilot)
 	}
 
 	// Randomly select a stand from the filtered list
+	std::srand(static_cast<unsigned int>(std::time(nullptr)));
+	int randomIndex = std::rand() % standsJson.size();
+	const auto& selectedStand = standsJson[randomIndex];
+	pilot.stand = selectedStand.begin().key();
 
+	// Mark the stand as occupied
+	Stand stand;
+	stand.name = pilot.stand;
+	stand.icao = pilot.destination;
+	stand.callsign = pilot.callsign;
+	occupiedStands_.push_back(stand);
 
-
-	// Assigner le stand au pilot
+	// Check if the stand is blocking other stands
+	if (selectedStand.contains("BLOCK"))
+	{
+		for (const auto& blockedStandName : selectedStand["BLOCK"]) {
+			Stand blockedStand;
+			blockedStand.name = blockedStandName.get<std::string>();
+			blockedStand.icao = pilot.destination;
+			blockedStand.callsign = pilot.callsign;
+			blockedStands_.push_back(blockedStand);
+		}
+	}
 }
 
 void DataManager::PopulateActiveAirports()

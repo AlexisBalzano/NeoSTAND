@@ -38,6 +38,16 @@ public:
 		}
 	};
 
+	struct Stand {
+		std::string name;
+		std::string icao;
+		std::string callsign;
+
+		bool operator==(const Stand& other) const {
+			return name == other.name;
+		}
+	};
+
 public:
 	DataManager(stand::NeoSTAND* neoSTAND);
 	~DataManager() = default;
@@ -82,4 +92,7 @@ private:
 	nlohmann::ordered_json configJson_;
 	std::vector<Pilot> pilots_;
 	std::vector<std::string> activeAirports_;
+	std::vector<Stand> occupiedStands_;
+	std::vector<Stand> blockedStands_;
+
 };
