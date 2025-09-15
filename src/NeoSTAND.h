@@ -69,6 +69,9 @@ namespace stand {
         std::string helpCommandId_;
 		std::string toggleModeCommandId_;
 		std::string airportsCommandId_;
+        std::string occupiedCommandId_;
+        std::string blockedCommandId_;
+
 
     private:
         // Plugin state

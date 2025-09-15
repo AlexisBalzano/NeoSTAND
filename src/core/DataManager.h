@@ -72,6 +72,8 @@ public:
 	bool pilotExists(const std::string& callsign);
 	Pilot getPilotByCallsign(const std::string& callsign);
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
+	std::vector<std::string> getOccupiedStands();
+	std::vector<std::string> getBlockedStands();
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isShengen(const Flightplan::Flightplan& fp);

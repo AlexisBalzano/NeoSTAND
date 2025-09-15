@@ -166,7 +166,7 @@ void DataManager::assignStands(Pilot& pilot)
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	// Check if configJSON is already the right one, if not, retrieve it
 	if (!retrieveCorrectConfigJson(pilot.destination)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning CFL for: " + pilot.destination);
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + pilot.destination);
 		pilot.stand = "";
 		return;
 	}
@@ -179,6 +179,8 @@ void DataManager::assignStands(Pilot& pilot)
 		pilot.stand = "";
 		return;
 	}
+
+	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available before filtering: " + std::to_string(standsJson.size()));
 
 	// Filter stands based on criteria
 	auto it = standsJson.begin();
@@ -251,11 +253,15 @@ void DataManager::assignStands(Pilot& pilot)
 		return;
 	}
 
+	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
+
 	// Randomly select a stand from the filtered list
 	std::srand(static_cast<unsigned int>(std::time(nullptr)));
 	int randomIndex = std::rand() % standsJson.size();
 	const auto& selectedStand = standsJson[randomIndex];
 	pilot.stand = selectedStand.begin().key();
+
+	LOG_DEBUG(Logger::LogLevel::Info, "Assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
 
 	// Mark the stand as occupied
 	Stand stand;
@@ -273,6 +279,7 @@ void DataManager::assignStands(Pilot& pilot)
 			blockedStand.icao = pilot.destination;
 			blockedStand.callsign = pilot.callsign;
 			blockedStands_.push_back(blockedStand);
+			LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot.stand);
 		}
 	}
 }
@@ -421,6 +428,26 @@ DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightp
 	if (gaTypes.contains(acType)) return AircraftType::generalAviation;
 
 	return AircraftType::airliner;
+}
+
+std::vector<std::string> DataManager::getOccupiedStands()
+{
+	std::vector<std::string> stands;
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	for (const auto& stand : occupiedStands_) {
+		stands.push_back(stand.name + " (" + stand.icao + ")");
+	}
+	return stands;
+}
+
+std::vector<std::string> DataManager::getBlockedStands()
+{
+	std::vector<std::string> stands;
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	for (const auto& stand : blockedStands_) {
+		stands.push_back(stand.name + " (" + stand.icao + ")");
+	}
+	return stands;
 }
 
 bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)
