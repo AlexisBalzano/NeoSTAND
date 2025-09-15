@@ -65,7 +65,6 @@ public:
 	void updatePilot(const std::string& callsign);
 	void removeAllPilots();
 	bool removePilot(const std::string& callsign);
-	void clearPilots();
 	void assignStands(Pilot& pilot);
 
 	std::vector<std::string> getAllActiveAirports();

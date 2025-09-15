@@ -148,15 +148,17 @@ bool DataManager::removePilot(const std::string& callsign)
 {
     std::lock_guard<std::mutex> lock(dataMutex_);
     const size_t initial = pilots_.size();
+
     pilots_.erase(std::remove_if(pilots_.begin(), pilots_.end(),
         [&callsign](const Pilot& p) { return p.callsign == callsign; }), pilots_.end());
-    return pilots_.size() < initial;
-}
 
-void DataManager::clearPilots()
-{
-	std::lock_guard<std::mutex> lock(dataMutex_);
-	pilots_.clear();
+    occupiedStands_.erase(std::remove_if(occupiedStands_.begin(), occupiedStands_.end(),
+        [&callsign](const Stand& s) { return s.callsign == callsign; }), occupiedStands_.end());
+
+    blockedStands_.erase(std::remove_if(blockedStands_.begin(), blockedStands_.end(),
+        [&callsign](const Stand& s) { return s.callsign == callsign; }), blockedStands_.end());
+
+    return pilots_.size() < initial;
 }
 
 void DataManager::assignStands(Pilot& pilot)
@@ -375,6 +377,8 @@ void DataManager::removeAllPilots()
 {
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	pilots_.clear();
+	occupiedStands_.clear();
+	blockedStands_.clear();
 }
 
 DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightplan& fp)
