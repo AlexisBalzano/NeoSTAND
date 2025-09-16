@@ -83,7 +83,7 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
     else if (commandId == neoSTAND_->helpCommandId_)
     {
         for (const char* line : {
-          "NeoRAS available commands:",
+          "NeoSTAND available commands:",
           ".stand version",
 		  ".stand toggle",
 		  ".stand airports",
