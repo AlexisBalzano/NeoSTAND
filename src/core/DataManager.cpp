@@ -226,7 +226,7 @@ void DataManager::assignStands(const std::string& callsign)
 		}
 
 		// Check if stand is occupied
-		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it](const Stand& stand){ return it.key() == stand.name;}) != occupiedStands_.end()) {
+		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it, icao](const Stand& stand){ return it.key() == stand.name && icao == stand.icao;}) != occupiedStands_.end()) {
 			LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is already occupied.");
 			it = standsJson.erase(it);
 			continue;
@@ -237,7 +237,7 @@ void DataManager::assignStands(const std::string& callsign)
 		}*/
 
 		// Check if stand is blocked
-		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it](const Stand& stand) { return it.key() == stand.name; }) != blockedStands_.end()) {
+		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it, icao](const Stand& stand) { return it.key() == stand.name && icao == stand.icao; }) != blockedStands_.end()) {
 			LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is blocked.");
 			it = standsJson.erase(it);
 			continue;
@@ -326,6 +326,14 @@ void DataManager::freeStand(const std::string& standName)
 
 	blockedStands_.erase(std::remove_if(blockedStands_.begin(), blockedStands_.end(),
 		[callsign](const Stand& s) { return s.callsign == callsign; }), blockedStands_.end());
+}
+
+void DataManager::addStandToOccupied(const Stand& stand)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	if (std::find(occupiedStands_.begin(), occupiedStands_.end(), stand) == occupiedStands_.end()) {
+		occupiedStands_.push_back(stand);
+	}
 }
 
 std::string DataManager::isAircraftOnStand(const std::string& callsign)
@@ -424,7 +432,7 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 		);
 
 		if (distanceMeters <= radiusMeters) {
-			return it.key();
+			return it.key() + " " + icao;
 		}
 	}
 

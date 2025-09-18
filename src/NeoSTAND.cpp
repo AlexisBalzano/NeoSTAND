@@ -160,24 +160,28 @@ void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfi
 void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
 {
     std::vector<DataManager::Stand> occupiedStands = dataManager_->getOccupiedStands();
-    std::vector<std::string> occupiersCallsigns;
-    for (const auto& stand : occupiedStands) {
-        if (!stand.callsign.empty())
-            occupiersCallsigns.push_back(stand.callsign);
-    }
 
     for (const auto& aircraft : event->aircrafts) {
         if (aircraft.callsign.empty())
             continue;
-	    
-        if (aircraft.position.onGround == true) {
-			// This aircraft is on the ground
-		}
-
-        if (std::find(occupiersCallsigns.begin(), occupiersCallsigns.end(), aircraft.callsign) != occupiersCallsigns.end()) {
-            // This aircraft is holding stand
+		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
+        if (!aircraft.position.stopped || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
+            continue;
         }
-		
+		std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign);
+        if (!currentStand.empty()) {
+            std::string icao = currentStand.substr(currentStand.length() - 4, 4);
+		    currentStand = currentStand.substr(0, currentStand.length() - 5);
+			auto it = std::find_if(occupiedStands.begin(), occupiedStands.end(),
+				[&currentStand](const DataManager::Stand& s) { return s.name == currentStand; });
+            if (it == occupiedStands.end()) {
+                DataManager::Stand stand;
+                stand.name = currentStand;
+				stand.callsign = aircraft.callsign;
+                stand.icao = icao;
+				dataManager_->addStandToOccupied(stand);
+            }
+        }
     }
 }
 

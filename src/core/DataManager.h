@@ -68,6 +68,7 @@ public:
 	void assignStands(const std::string& callsign);
 	void assignStandToPilot(Pilot& pilot, const std::string& standName);
 	void freeStand(const std::string& standName);
+	void addStandToOccupied(const Stand& stand);
 	std::string isAircraftOnStand(const std::string& callsign);
 
 	std::vector<std::string> getAllActiveAirports();

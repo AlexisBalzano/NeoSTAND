@@ -13,6 +13,10 @@ void NeoSTAND::RegisterTagActions()
     assignActionId_ = tagInterface_->RegisterTagAction(tagDef);
     
 	// Dropdown Menu def
+    tagDef.name = "StandMenu";
+    tagDef.description = "open the stand menu";
+    standMenuId_ = tagInterface_->RegisterTagAction(tagDef);
+
     PluginSDK::Tag::DropdownDefinition dropdownDef;
     dropdownDef.title = "STAND SELECT";
     dropdownDef.width = 75;

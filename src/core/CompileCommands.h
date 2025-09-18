@@ -140,7 +140,8 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
             neoSTAND_->DisplayMessage("No occupied stands found.");
         }
         else {
-            stands.emplace(stands.begin(), "Occupied Stands:");
+			neoSTAND_->DisplayMessage("Occupied Stands:");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             for (const DataManager::Stand& stand : stands)
             {
                 std::string line = stand.name + " (" + stand.icao + ") - " + stand.callsign;
