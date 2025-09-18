@@ -53,6 +53,7 @@ namespace stand {
         Fsd::FsdAPI* GetFsdAPI() const { return fsdAPI_; }
         PluginSDK::ControllerData::ControllerDataAPI* GetControllerDataAPI() const { return controllerDataAPI_; }
 		Tag::TagInterface* GetTagInterface() const { return tagInterface_; }
+        ClientInformation GetClientInfo() const { return clientInfo_; };
         DataManager* GetDataManager() const { return dataManager_.get(); }
 
     private:
@@ -71,6 +72,7 @@ namespace stand {
 		std::string airportsCommandId_;
         std::string occupiedCommandId_;
         std::string blockedCommandId_;
+        std::string pilotCommandId_;
 
 
     private:

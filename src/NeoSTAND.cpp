@@ -134,12 +134,13 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 
 void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
+	LOG_DEBUG(Logger::LogLevel::Info, "Running scope update...");
 	dataManager_->updateAllPilots();
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
-	
+	LOG_DEBUG(Logger::LogLevel::Info, "Updating tags for " + std::to_string(pilots.size()) + " pilots.");
     for (auto& pilot : pilots) {
-        if (pilot.stand.empty()) dataManager_->assignStands(pilot);
+        if (pilot.stand.empty()) dataManager_->assignStands(pilot.callsign);
         this->UpdateTagItems(pilot.callsign);
 	}
 }
@@ -150,6 +151,7 @@ void NeoSTAND::OnTimer(int Counter) {
 
 void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfigurationsUpdatedEvent* event)
 {
+	LOG_DEBUG(Logger::LogLevel::Info, "Airport configurations updated, reloading data.");
     ClearAllTagCache();
     dataManager_->removeAllPilots();
     dataManager_->PopulateActiveAirports();
@@ -157,11 +159,25 @@ void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfi
 
 void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
 {
+    std::vector<DataManager::Stand> occupiedStands = dataManager_->getOccupiedStands();
+    std::vector<std::string> occupiersCallsigns;
+    for (const auto& stand : occupiedStands) {
+        if (!stand.callsign.empty())
+            occupiersCallsigns.push_back(stand.callsign);
+    }
+
     for (const auto& aircraft : event->aircrafts) {
         if (aircraft.callsign.empty())
             continue;
+	    
+        if (aircraft.position.onGround == true) {
+			// This aircraft is on the ground
+		}
 
-		UpdateTagItems(aircraft.callsign);
+        if (std::find(occupiersCallsigns.begin(), occupiersCallsigns.end(), aircraft.callsign) != occupiersCallsigns.end()) {
+            // This aircraft is holding stand
+        }
+		
     }
 }
 
@@ -169,7 +185,7 @@ void stand::NeoSTAND::OnFlightplanUpdated(const Flightplan::FlightplanUpdatedEve
 {
 	dataManager_->removePilot(event->callsign); // Force recompute
 	ClearTagCache(event->callsign);
-    UpdateTagItems(event->callsign);
+	dataManager_->updatePilot(event->callsign);
 }
 
 void stand::NeoSTAND::OnFlightplanRemoved(const Flightplan::FlightplanRemovedEvent* event)
@@ -185,15 +201,14 @@ void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnecte
 }
 
 void NeoSTAND::UpdateTagItems(std::string callsign) {
-	dataManager_->updatePilot(callsign);
-    DataManager::Pilot pilot = dataManager_->getPilotByCallsign(callsign);
-    if (pilot.empty()) return;
+    DataManager::Pilot* pilot = dataManager_->getPilotByCallsign(callsign);
+    if (!pilot || pilot->empty()) return;
 
     Tag::TagContext tagContext;
     tagContext.callsign = callsign;
     tagContext.colour = ColorizeStand();
 
-	std::string stand = pilot.stand.empty() ? "N/A" : pilot.stand;
+	std::string stand = pilot->stand.empty() ? "N/A" : pilot->stand;
 
     updateTagValueIfChanged(callsign, standItemId_, stand, tagContext);
 }
@@ -218,6 +233,9 @@ bool NeoSTAND::updateTagValueIfChanged(const std::string& callsign, const std::s
     if (!needsUpdate)
         return false;
 
+    if (!tagInterface_)
+        return false;
+    
     tagInterface_->UpdateTagValue(tagId, value, context);
     
     {

@@ -9,8 +9,8 @@ using namespace PluginSDK;
 
 namespace stand
 {
-	constexpr const int MAX_DISTANCE = 25; // Max distance to consider an aircraft (in NM)
-	constexpr const int MAX_ALTITUDE = 5000; // Max altitude to consider an aircraft (in feet)
+	constexpr const int MAX_DISTANCE = 50; // Max distance to consider an aircraft (in NM)
+	constexpr const int MAX_ALTITUDE = 10000; // Max altitude to consider an aircraft (in feet)
 }
 
 class DataManager {
@@ -30,7 +30,7 @@ public:
 		std::string aircraftWTC;
 		AircraftType aircraftType;
 		std::string stand;
-		bool isShengen;
+		bool isSchengen;
 		bool isNational;
 
 		bool empty() const {
@@ -55,7 +55,7 @@ public:
 	void clearData();
 	void clearJson();
 
-	static std::filesystem::path getDllDirectory();
+	std::filesystem::path getDllDirectory();
 	void DisplayMessageFromDataManager(const std::string& message, const std::string& sender = "");
 	int retrieveConfigJson(const std::string& icao);
 	bool retrieveCorrectConfigJson(const std::string& icao);
@@ -65,18 +65,21 @@ public:
 	void updatePilot(const std::string& callsign);
 	void removeAllPilots();
 	bool removePilot(const std::string& callsign);
-	void assignStands(Pilot& pilot);
+	void assignStands(const std::string& callsign);
+	void assignStandToPilot(Pilot& pilot, const std::string& standName);
+	void freeStand(const std::string& standName);
+	std::string isAircraftOnStand(const std::string& callsign);
 
 	std::vector<std::string> getAllActiveAirports();
 	std::vector<Pilot> getAllPilots();
 	bool pilotExists(const std::string& callsign);
-	Pilot getPilotByCallsign(const std::string& callsign);
+	Pilot* getPilotByCallsign(const std::string& callsign);
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
-	std::vector<std::string> getOccupiedStands();
-	std::vector<std::string> getBlockedStands();
+	std::vector<Stand> getOccupiedStands();
+	std::vector<Stand> getBlockedStands();
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
-	bool isShengen(const Flightplan::Flightplan& fp);
+	bool isSchengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
 
 private:
