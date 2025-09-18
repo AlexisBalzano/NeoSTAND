@@ -33,6 +33,7 @@ void NeoSTAND::Initialize(const PluginMetadata &metadata, CoreAPI *coreAPI, Clie
     logger_ = &lcoreAPI->logger();
     tagInterface_ = lcoreAPI->tag().getInterface();
 	dataManager_ = std::make_unique<DataManager>(this);
+    dataManager_->PopulateActiveAirports();
 
 #ifndef DEV
 	std::pair<bool, std::string> updateAvailable = newVersionAvailable();
@@ -134,11 +135,9 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 
 void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
-	LOG_DEBUG(Logger::LogLevel::Info, "Running scope update...");
 	dataManager_->updateAllPilots();
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
-	LOG_DEBUG(Logger::LogLevel::Info, "Updating tags for " + std::to_string(pilots.size()) + " pilots.");
     for (auto& pilot : pilots) {
         if (pilot.stand.empty()) dataManager_->assignStands(pilot.callsign);
         this->UpdateTagItems(pilot.callsign);
