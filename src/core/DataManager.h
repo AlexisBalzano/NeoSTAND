@@ -85,6 +85,8 @@ public:
 	int getUpdateInterval() const { return updateInterval_; }
 	int getMaxAltitude() const { return maxAltitude_; }
 	double getMaxDistance() const { return maxDistance_; }
+	std::vector<Stand> getAllStandsForAirport(const std::string& icao);
+	std::vector<Stand> getAvailableStandsForAirport(const std::string& icao);
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isSchengen(const Flightplan::Flightplan& fp);

@@ -683,6 +683,50 @@ std::vector<DataManager::Stand> DataManager::getBlockedStands()
 	return blockedStands_;
 }
 
+std::vector<DataManager::Stand> DataManager::getAllStandsForAirport(const std::string& icao)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	if (!retrieveCorrectConfigJson(icao)) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
+		return {};
+	}
+
+	nlohmann::json standsJson;
+	if (configJson_.contains("Stands")) {
+		standsJson = configJson_["Stands"];
+	}
+	else {
+		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icao);
+		return {};
+	}
+	std::vector<Stand> stands;
+	for (auto it = standsJson.begin(); it != standsJson.end(); ++it) {
+		Stand stand;
+		stand.name = it.key();
+		stand.icao = icao;
+		stand.callsign = "";
+		stands.push_back(stand);
+	}
+
+	return stands;
+}
+
+std::vector<DataManager::Stand> DataManager::getAvailableStandsForAirport(const std::string& icao)
+{
+	std::vector<Stand> allStands = getAllStandsForAirport(icao);
+	std::vector<Stand> availableStands;
+	for (const auto& stand : allStands) {
+		bool isOccupied = std::find_if(occupiedStands_.begin(), occupiedStands_.end(),
+			[&stand](const Stand& s) { return s.name == stand.name && s.icao == stand.icao; }) != occupiedStands_.end();
+		bool isBlocked = std::find_if(blockedStands_.begin(), blockedStands_.end(),
+			[&stand](const Stand& s) { return s.name == stand.name && s.icao == stand.icao; }) != blockedStands_.end();
+		if (!isOccupied && !isBlocked) {
+			availableStands.push_back(stand);
+		}
+	}
+	return availableStands;
+}
+
 bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)
 {
 	std::lock_guard<std::mutex> lock(dataMutex_);
