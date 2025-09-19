@@ -1,0 +1,6 @@
+{
+  "update_interval": 5,
+  "max_alt": 5000,
+  "max_distance":  4.0,
+  "config_url":""
+}
