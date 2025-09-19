@@ -568,7 +568,6 @@ DataManager::Pilot* DataManager::getPilotByCallsign(const std::string& callsign)
 void DataManager::updateAllPilots()
 {
 	std::vector<Flightplan::Flightplan> flightplans = flightplanAPI_->getAll();
-	LOG_DEBUG(Logger::LogLevel::Info, "Total flightplans retrieved (updateAllPilot): " + std::to_string(flightplans.size()));
 	for (const auto& fp : flightplans) {
 		updatePilot(fp.callsign);
 	}
