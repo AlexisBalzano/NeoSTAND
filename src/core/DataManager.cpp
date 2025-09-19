@@ -21,6 +21,8 @@ DataManager::DataManager(stand::NeoSTAND* neoSTAND)
 	controllerDataAPI_ = neoSTAND_->GetControllerDataAPI();
 
 	configPath_ = getDllDirectory();
+	loadSettingJson();
+	bool success = parseSettings();
 }
 
 
@@ -48,6 +50,7 @@ void DataManager::clearJson()
 {
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	configJson_.clear();
+	settingJson_.clear();
 }
 
 void DataManager::DisplayMessageFromDataManager(const std::string& message, const std::string& sender)
@@ -115,6 +118,83 @@ bool DataManager::isCorrectJsonVersion(const std::string& config_version, const 
 		loggerAPI_->log(Logger::LogLevel::Error, "Config version mismatch! Expected: " + std::string(NEOSTAND_VERSION) + ", Found: " + config_version + fileName);
 	}
 	return false;
+}
+
+void DataManager::loadSettingJson()
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	std::filesystem::path jsonPath = configPath_ / "plugins" / "NeoSTAND" / "config.json";
+	std::ifstream configFile(jsonPath);
+	if (!configFile.is_open()) {
+		DisplayMessageFromDataManager("Could not open config data JSON file: " + jsonPath.string(), "DataManager");
+		loggerAPI_->log(Logger::LogLevel::Error, "Could not open config data JSON file: " + jsonPath.string());
+		return;
+	}
+	try {
+		configJson_ = nlohmann::json::parse(configFile);
+	}
+	catch (...) {
+		DisplayMessageFromDataManager("Error parsing config data JSON file: " + jsonPath.string(), "DataManager");
+		loggerAPI_->log(Logger::LogLevel::Error, "Error parsing config data JSON file: " + jsonPath.string());
+		return;
+	}
+}
+
+bool DataManager::parseSettings()
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+
+	auto readInt = [&](const char* key, int defVal) -> int {
+		if (configJson_.contains(key)) {
+			const auto& v = configJson_[key];
+			if (v.is_number_integer()) {
+				int x = v.get<int>();
+				return x;
+			}
+			if (v.is_number_float()) {
+				int x = static_cast<int>(v.get<double>());
+				return x;
+			}
+		}
+		loggerAPI_->log(Logger::LogLevel::Warning, std::string(key) + " missing or not an integer in config.json, using default");
+		DisplayMessageFromDataManager(std::string(key) + " missing or not an integer in config.json, using default", "DataManager");
+		return defVal;
+		};
+
+	auto readDouble = [&](const char* key, double defVal) -> double {
+		if (configJson_.contains(key)) {
+			const auto& v = configJson_[key];
+			if (v.is_number()) {
+				return v.get<double>();
+			}
+		}
+		loggerAPI_->log(Logger::LogLevel::Warning, std::string(key) + " missing or not a number in config.json, using default");
+		DisplayMessageFromDataManager(std::string(key) + " missing or not a number in config.json, using default", "DataManager");
+		return defVal;
+		};
+
+	updateInterval_ = readInt("update_interval", stand::DEFAULT_UPDATE_INTERVAL);
+	if (updateInterval_ <= 0) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "update_interval <= 0, using default");
+		DisplayMessageFromDataManager("update_interval <= 0, using default", "DataManager");
+		updateInterval_ = stand::DEFAULT_UPDATE_INTERVAL;
+	}
+
+	maxAltitude_ = readInt("max_alt", stand::MAX_ALTITUDE);
+	if (maxAltitude_ <= 0) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "max_alt <= 0, using default");
+		DisplayMessageFromDataManager("max_alt <= 0, using default", "DataManager");
+		maxAltitude_ = stand::MAX_ALTITUDE;
+	}
+
+	maxDistance_ = readDouble("max_distance", stand::MAX_DISTANCE);
+	if (maxDistance_ < 0) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "max_distance < 0, using default");
+		DisplayMessageFromDataManager("max_distance < 0, using default", "DataManager");
+		maxDistance_ = stand::MAX_DISTANCE;
+	}
+
+	return true;
 }
 
 bool DataManager::removePilot(const std::string& callsign)
@@ -502,13 +582,13 @@ void DataManager::updatePilot(const std::string& callsign)
 	if (!aircraftOpt.has_value()) return;
 	
 	Aircraft::Aircraft aircraft = *aircraftOpt;
-	if (aircraft.position.altitude > stand::MAX_ALTITUDE) return;
+	if (aircraft.position.altitude > getMaxAltitude()) return;
 
 	std::optional<Flightplan::Flightplan> flightplan = flightplanAPI_->getByCallsign(aircraft.callsign);
 	if (!flightplan.has_value()) return;
 
 	std::optional<double> distanceToDest = aircraftAPI_->getDistanceToDestination(aircraft.callsign);
-	if (!distanceToDest.has_value() || *distanceToDest > stand::MAX_DISTANCE) return;
+	if (!distanceToDest.has_value() || *distanceToDest > getMaxDistance()) return;
 
 	if (!isConcernedAircraft(*flightplan)) return;
 

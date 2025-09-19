@@ -9,8 +9,10 @@ using namespace PluginSDK;
 
 namespace stand
 {
+	// Default settings value
 	constexpr const int MAX_DISTANCE = 50; // Max distance to consider an aircraft (in NM)
 	constexpr const int MAX_ALTITUDE = 10000; // Max altitude to consider an aircraft (in feet)
+	constexpr const int DEFAULT_UPDATE_INTERVAL = 5; // Interval to update stands (in seconds)
 }
 
 class DataManager {
@@ -60,6 +62,8 @@ public:
 	int retrieveConfigJson(const std::string& icao);
 	bool retrieveCorrectConfigJson(const std::string& icao);
 	bool isCorrectJsonVersion(const std::string& config_version, const std::string& fileName);
+	void loadSettingJson();
+	bool parseSettings();
 	void PopulateActiveAirports();
 	void updateAllPilots();
 	void updatePilot(const std::string& callsign);
@@ -78,6 +82,9 @@ public:
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
 	std::vector<Stand> getOccupiedStands();
 	std::vector<Stand> getBlockedStands();
+	int getUpdateInterval() const { return updateInterval_; }
+	int getMaxAltitude() const { return maxAltitude_; }
+	double getMaxDistance() const { return maxDistance_; }
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isSchengen(const Flightplan::Flightplan& fp);
@@ -95,9 +102,13 @@ private:
 	std::mutex dataMutex_;
 	std::filesystem::path configPath_;
 	nlohmann::ordered_json configJson_;
+	nlohmann::ordered_json settingJson_;
 	std::vector<Pilot> pilots_;
 	std::vector<std::string> activeAirports_;
 	std::vector<Stand> occupiedStands_;
 	std::vector<Stand> blockedStands_;
 
+	int updateInterval_;
+	int maxAltitude_;
+	double maxDistance_;
 };

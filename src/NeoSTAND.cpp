@@ -145,7 +145,7 @@ void NeoSTAND::runScopeUpdate() {
 }
 
 void NeoSTAND::OnTimer(int Counter) {
-    if (Counter % 5 == 0 && autoMode) this->runScopeUpdate();
+    if (Counter % dataManager_->getUpdateInterval() == 0 && autoMode) this->runScopeUpdate();
 }
 
 void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfigurationsUpdatedEvent* event)
