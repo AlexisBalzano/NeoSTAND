@@ -18,19 +18,25 @@ void NeoSTAND::RegisterTagActions()
     standMenuId_ = tagInterface_->RegisterTagAction(tagDef);
 
     PluginSDK::Tag::DropdownDefinition dropdownDef;
-    dropdownDef.title = "STAND SELECT";
+    dropdownDef.title = "STAND";
     dropdownDef.width = 75;
     dropdownDef.maxHeight = 150;
 
     PluginSDK::Tag::DropdownComponent dropdownComponent;
+	PluginSDK::Tag::DropdownComponentStyle style;
+
+	style.textAlign = PluginSDK::Tag::DropdownAlignmentType::Center;
 
     dropdownComponent.id = "STAND1";
     dropdownComponent.type = PluginSDK::Tag::DropdownComponentType::Button;
     dropdownComponent.text = "48A";
     dropdownComponent.requiresInput = false;
+	dropdownComponent.style = style;
     dropdownDef.components.push_back(dropdownComponent);
 
     tagInterface_->SetActionDropdown(standMenuId_, dropdownDef);
+
+	updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
 }
 
 void NeoSTAND::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
@@ -52,7 +58,7 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
         return;
     }
 
-	DisplayMessage("Assigning Stand 48A for: " + event->callsign);
+	DisplayMessage("Assigning Stand: " + event->componentId + " for: " + event->callsign);
 }
 
 void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &actionId, const std::string &userInput)
@@ -63,9 +69,38 @@ void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &act
 	}
 }
 
-inline bool NeoSTAND::toggleAutoMode()
+inline void NeoSTAND::updateStandMenuButtons(const std::string& icao)
 {
-    autoMode = !autoMode;
-	return autoMode;
+    std::vector<DataManager::Stand> stands = dataManager_->getAvailableStandsForAirport(icao);
+
+    PluginSDK::Tag::DropdownDefinition dropdownDef;
+    dropdownDef.title = "STAND";
+    dropdownDef.width = 75;
+    dropdownDef.maxHeight = 150;
+
+    PluginSDK::Tag::DropdownComponent scrollArea;
+	scrollArea.id = "SCROLL";
+	scrollArea.type = PluginSDK::Tag::DropdownComponentType::ScrollArea;
+
+
+    PluginSDK::Tag::DropdownComponent dropdownComponent;
+    PluginSDK::Tag::DropdownComponentStyle style;
+
+    style.textAlign = PluginSDK::Tag::DropdownAlignmentType::Center;
+
+
+    for (const auto& stand : stands) {
+        dropdownComponent.id = stand.name;
+        dropdownComponent.type = PluginSDK::Tag::DropdownComponentType::Button;
+        dropdownComponent.text = stand.name;
+        dropdownComponent.requiresInput = false;
+		dropdownComponent.style = style;
+        scrollArea.children.push_back(dropdownComponent);
+	}
+
+	dropdownDef.components.push_back(scrollArea);
+
+    tagInterface_->UpdateActionDropdown(standMenuId_, dropdownDef);
 }
-}  // namespace vsid
+
+}  // namespace stand

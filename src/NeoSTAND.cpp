@@ -136,6 +136,8 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
+    
+    updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
     for (auto& pilot : pilots) {
@@ -260,6 +262,12 @@ void NeoSTAND::ClearAllTagCache()
 {
     std::lock_guard<std::mutex> lock(tagCacheMutex_);
     tagCache_.clear();
+}
+
+bool NeoSTAND::toggleAutoMode()
+{
+    autoMode = !autoMode;
+    return autoMode;
 }
 
 PluginSDK::PluginMetadata NeoSTAND::GetMetadata() const
