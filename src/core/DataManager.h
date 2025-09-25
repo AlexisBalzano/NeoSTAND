@@ -89,7 +89,7 @@ public:
 	std::vector<Stand> getAvailableStandsForAirport(const std::string& icao);
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
-	bool isArrival(const Pilot& pilot);
+	bool isArrival(const std::string& callsign);
 	bool isSchengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
 

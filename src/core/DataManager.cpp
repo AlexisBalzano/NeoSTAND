@@ -779,9 +779,9 @@ bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)
 	return false;
 }
 
-bool DataManager::isArrival(const Pilot& pilot)
+bool DataManager::isArrival(const std::string& callsign)
 {
-	std::optional<Flightplan::Flightplan> flightplanOpt = flightplanAPI_->getByCallsign(pilot.callsign);
+	std::optional<Flightplan::Flightplan> flightplanOpt = flightplanAPI_->getByCallsign(callsign);
 	if (!flightplanOpt.has_value()) return false;
 	Flightplan::Flightplan fp = *flightplanOpt;
 

@@ -139,7 +139,7 @@ void NeoSTAND::runScopeUpdate() {
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
     for (auto& pilot : pilots) {
-        if (!dataManager_->isArrival(pilot)) {
+        if (!dataManager_->isArrival(pilot.callsign)) {
             std::optional<double> distance = aircraftAPI_->getDistanceFromOrigin(pilot.callsign);
             if (distance.has_value() && distance.value() > 5.0) {
                 dataManager_->removePilot(pilot.callsign);
@@ -169,16 +169,25 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             continue;
 		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
 
-        // Remove pilot if departed and away from airport
         if (!aircraft.position.onGround && dataManager_->pilotExists(aircraft.callsign)) {
             if (fp.has_value() && dataManager_->isConcernedAircraft(*fp)) {
 
             }
         }
 
-
         if (aircraft.position.groundSpeed > 3 || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
-            continue;
+            if (!dataManager_->isArrival(aircraft.callsign)) {
+				// Free stand if assigned, need to find stand name, Can be optimized if every stand is occupied by a pilot since I can do pilot.stand instead of searching again
+                std::vector<DataManager::Stand> occupiedStands = dataManager_->getOccupiedStands();
+                auto it = std::find_if(occupiedStands.begin(), occupiedStands.end(),
+					[&aircraft](const DataManager::Stand& stand) { return stand.callsign == aircraft.callsign; });
+
+                if (it != occupiedStands.end()) {
+                    dataManager_->freeStand(it->name);
+				}
+                dataManager_->removePilot(aircraft.callsign);
+                continue;
+            }
         }
 		std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign);
         if (!currentStand.empty()) {
