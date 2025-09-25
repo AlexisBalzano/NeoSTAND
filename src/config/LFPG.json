@@ -3227,7 +3227,8 @@
             "Use": "C",
             "Schengen": false,
             "Callsigns": [
-                "FDX"
+                "FDX",
+				"FPO"
             ],
             "WTC": "LM",
             "Priority": 3
