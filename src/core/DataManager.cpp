@@ -769,6 +769,17 @@ bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)
 	return false;
 }
 
+bool DataManager::isArrival(const Pilot& pilot)
+{
+	std::optional<Flightplan::Flightplan> flightplanOpt = flightplanAPI_->getByCallsign(pilot.callsign);
+	if (!flightplanOpt.has_value()) return false;
+	Flightplan::Flightplan fp = *flightplanOpt;
+
+	std::vector<std::string> activeAirports = getAllActiveAirports();
+
+	return std::find(activeAirports.begin(), activeAirports.end(), fp.destination) != activeAirports.end();
+}
+
 bool DataManager::isSchengen(const Flightplan::Flightplan& fp)
 {
 	auto isInSchengen = [](std::string icao) -> bool {
