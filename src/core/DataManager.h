@@ -89,6 +89,7 @@ public:
 	std::vector<Stand> getAvailableStandsForAirport(const std::string& icao);
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
+	bool isArrival(const Pilot& pilot);
 	bool isSchengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
 
@@ -109,6 +110,11 @@ private:
 	std::vector<std::string> activeAirports_;
 	std::vector<Stand> occupiedStands_;
 	std::vector<Stand> blockedStands_;
+
+	std::unordered_set<std::string> gaTypes;
+	std::unordered_set<std::string> militaryTypes;
+	std::unordered_set<std::string> heliTypes;
+	std::unordered_set<std::string> cargo;
 
 	int updateInterval_;
 	int maxAltitude_;
