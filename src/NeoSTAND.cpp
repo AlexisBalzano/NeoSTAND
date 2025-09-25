@@ -136,11 +136,15 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
-    
-    //updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
     for (auto& pilot : pilots) {
+        if (!dataManager_->isArrival(pilot)) {
+            std::optional<double> distance = aircraftAPI_->getDistanceFromOrigin(pilot.callsign);
+            if (distance.has_value() && distance.value() > 5.0) {
+                dataManager_->removePilot(pilot.callsign);
+            }
+        }
         if (pilot.stand.empty()) dataManager_->assignStands(pilot.callsign);
         this->UpdateTagItems(pilot.callsign);
 	}
@@ -164,6 +168,15 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
         if (aircraft.callsign.empty())
             continue;
 		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
+
+        // Remove pilot if departed and away from airport
+        if (!aircraft.position.onGround && dataManager_->pilotExists(aircraft.callsign)) {
+            if (fp.has_value() && dataManager_->isConcernedAircraft(*fp)) {
+
+            }
+        }
+
+
         if (aircraft.position.groundSpeed > 3 || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
             continue;
         }
