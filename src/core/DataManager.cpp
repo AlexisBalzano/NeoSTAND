@@ -219,15 +219,24 @@ void DataManager::assignStands(const std::string& callsign)
 	Pilot *pilot = getPilotByCallsign(callsign);
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	if (!pilot) return;
+
 	// Check if configJSON is already the right one, if not, retrieve it
 	std::string icao = pilot->destination;
 	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
 	if (!retrieveCorrectConfigJson(icao)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + callsign);
 		pilot->stand = "";
 		return;
 	}
 	
+	// If aircraft occupies stand already, assign the occupied stand
+	auto occupiedIt = std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&callsign](const Stand& stand) { return callsign == stand.callsign; });
+	if (occupiedIt != occupiedStands_.end()) {
+		pilot->stand = occupiedIt->name;
+		loggerAPI_->log(Logger::LogLevel::Info, "Pilot: " + pilot->callsign + " already occupies stand: " + pilot->stand);
+		return;
+	}
+
 	nlohmann::json standsJson;
 	if (configJson_.contains("Stands")) {
 		standsJson = configJson_["Stands"];
@@ -311,10 +320,6 @@ void DataManager::assignStands(const std::string& callsign)
 			it = standsJson.erase(it);
 			continue;
 		}
-		/*else if (isAircraftOnStand(stand["Coordinates"].get<std::string>())) {
-			it = standsJson.erase(it);
-			continue;
-		}*/
 
 		// Check if stand is blocked
 		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it, icao](const Stand& stand) { return it.key() == stand.name && icao == stand.icao; }) != blockedStands_.end()) {
@@ -410,9 +415,35 @@ void DataManager::freeStand(const std::string& standName)
 
 void DataManager::addStandToOccupied(const Stand& stand)
 {
-	std::lock_guard<std::mutex> lock(dataMutex_);
-	if (std::find(occupiedStands_.begin(), occupiedStands_.end(), stand) == occupiedStands_.end()) {
-		occupiedStands_.push_back(stand);
+	{
+		std::lock_guard<std::mutex> lock(dataMutex_);
+		if (std::find(occupiedStands_.begin(), occupiedStands_.end(), stand) == occupiedStands_.end()) {
+			occupiedStands_.push_back(stand);
+		}
+	}
+
+	// Check if stand blocking other stands
+	std::vector<Stand> stands = getAllStandsForAirport(stand.icao);
+
+	auto it = std::find_if(stands.begin(), stands.end(), [&stand](const Stand& s) { return s.name == stand.name; });
+	if (it != stands.end()) {
+		// Check if the stand is blocking other stands
+		if (configJson_.contains("Stands") && configJson_["Stands"].contains(stand.name)) {
+			const auto& standJson = configJson_["Stands"][stand.name];
+			if (standJson.contains("Block") && standJson["Block"].is_array())
+			{
+				for (const auto& blockedStandName : standJson["Block"]) {
+					Stand blockedStand;
+					blockedStand.name = blockedStandName.get<std::string>();
+					blockedStand.icao = stand.icao;
+					blockedStand.callsign = stand.callsign;
+					std::lock_guard<std::mutex> lock(dataMutex_);
+					if (std::find(blockedStands_.begin(), blockedStands_.end(), blockedStand) == blockedStands_.end()) {
+						blockedStands_.push_back(blockedStand);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -637,7 +668,7 @@ DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightp
 	if (callsign[1] == '-' || callsign[2] == '-') return AircraftType::generalAviation;
 	
 	static const std::unordered_set<std::string> cargo = {
-			"FDX","UPS","GTI","CLX","CKS","BCS","GEC","ABW","NCA","RCH","SQC","CMB","BOX","MPH","TAY","QAJ","ICV","KYE","ACX","BRQ"
+			"FDX","UPS","GTI","CLX","CKS","BCS","GEC","ABW","NCA","RCH","SQC","CMB","BOX","MPH","TAY","QAJ","ICV","KYE","ACX","BRQ", "FPO"
 	};
 	if (cargo.contains(callsign.substr(0, 3))) return AircraftType::cargo;
 	

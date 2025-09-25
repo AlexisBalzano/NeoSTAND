@@ -137,7 +137,7 @@ void NeoSTAND::runScopeUpdate() {
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
     
-    updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
+    //updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
 
 	std::vector<DataManager::Pilot> pilots = dataManager_->getAllPilots();
     for (auto& pilot : pilots) {
@@ -160,28 +160,27 @@ void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfi
 
 void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
 {
-    std::vector<DataManager::Stand> occupiedStands = dataManager_->getOccupiedStands();
-
     for (const auto& aircraft : event->aircrafts) {
         if (aircraft.callsign.empty())
             continue;
 		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
-        if (!aircraft.position.stopped || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
+        if (aircraft.position.groundSpeed > 3 || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
             continue;
         }
 		std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign);
         if (!currentStand.empty()) {
             std::string icao = currentStand.substr(currentStand.length() - 4, 4);
-		    currentStand = currentStand.substr(0, currentStand.length() - 5);
-			auto it = std::find_if(occupiedStands.begin(), occupiedStands.end(),
-				[&currentStand](const DataManager::Stand& s) { return s.name == currentStand; });
-            if (it == occupiedStands.end()) {
-                DataManager::Stand stand;
-                stand.name = currentStand;
-				stand.callsign = aircraft.callsign;
-                stand.icao = icao;
-				dataManager_->addStandToOccupied(stand);
-            }
+            currentStand = currentStand.substr(0, currentStand.length() - 5);
+
+            DataManager::Stand stand;
+            stand.name = currentStand;
+            stand.callsign = aircraft.callsign;
+            stand.icao = icao;
+            dataManager_->addStandToOccupied(stand);
+
+        }
+        else {
+			dataManager_->freeStand(aircraft.callsign);
         }
     }
 }

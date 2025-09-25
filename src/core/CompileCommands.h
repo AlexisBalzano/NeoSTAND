@@ -158,7 +158,8 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
             neoSTAND_->DisplayMessage("No blocked stands found.");
         }
         else {
-            stands.emplace(stands.begin(), "Blocked Stands:");
+			neoSTAND_->DisplayMessage("Blocked Stands:");
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
             for (const DataManager::Stand& stand : stands)
             {
                 std::string line = stand.name + " (" + stand.icao + ") - " + stand.callsign;
@@ -175,6 +176,7 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
             return { true, "error" };
         }
         std::string callsign = args[0];
+		std::transform(callsign.begin(), callsign.end(), callsign.begin(), ::toupper);
         std::string stand = neoSTAND_->GetDataManager()->isAircraftOnStand(callsign);
         if (stand.empty()) {
             neoSTAND_->DisplayMessage("Pilot " + callsign + " is not on a stand.");
