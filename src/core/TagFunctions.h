@@ -1,5 +1,5 @@
 #pragma once
-#include "NeOSTAND.h"
+#include "NeoSTAND.h"
 
 namespace stand {
 void NeoSTAND::RegisterTagActions()
