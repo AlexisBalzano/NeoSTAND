@@ -81,19 +81,22 @@ namespace stand {
 
 
     private:
-        // Plugin state
-        bool initialized_ = false;
-        std::thread m_worker;
-        bool m_stop;
-		bool autoMode = true;
         struct TagRenderState {
             std::string value;
             Color colour;
             Color background;
         };
+
+        // Plugin state
+        bool initialized_ = false;
+        std::thread m_worker;
+        bool m_stop;
+		bool autoMode = true;
         std::unordered_map<std::string, std::unordered_map<std::string, TagRenderState>> tagCache_;
         std::mutex tagCacheMutex_;
         std::string configVersion;
+		std::unordered_set<std::string> ignoredCallsigns_;
+
 
         // APIs
         PluginMetadata metadata_;

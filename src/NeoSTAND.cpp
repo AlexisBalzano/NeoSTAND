@@ -221,6 +221,7 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 }
 
 void NeoSTAND::runScopeUpdate() {
+    updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
 
