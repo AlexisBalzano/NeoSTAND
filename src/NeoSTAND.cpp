@@ -177,15 +177,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
 
         if (aircraft.position.groundSpeed > 3 || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
             if (!dataManager_->isArrival(aircraft.callsign)) {
-				// Free stand if assigned, need to find stand name, Can be optimized if every stand is occupied by a pilot since I can do pilot.stand instead of searching again
-                std::vector<DataManager::Stand> occupiedStands = dataManager_->getOccupiedStands();
-                auto it = std::find_if(occupiedStands.begin(), occupiedStands.end(),
-					[&aircraft](const DataManager::Stand& stand) { return stand.callsign == aircraft.callsign; });
-
-                if (it != occupiedStands.end()) {
-                    dataManager_->freeStand(it->name);
-				}
-                dataManager_->removePilot(aircraft.callsign);
+				dataManager_->removePilot(aircraft.callsign);
                 continue;
             }
         }
