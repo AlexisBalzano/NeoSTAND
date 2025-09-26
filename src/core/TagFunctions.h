@@ -35,8 +35,6 @@ void NeoSTAND::RegisterTagActions()
     dropdownDef.components.push_back(dropdownComponent);
 
     tagInterface_->SetActionDropdown(standMenuId_, dropdownDef);
-
-	updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
 }
 
 void NeoSTAND::OnTagAction(const PluginSDK::Tag::TagActionEvent *event)
@@ -57,8 +55,22 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
     {
         return;
     }
+	DataManager::Pilot* pilot = dataManager_->getPilotByCallsign(event->callsign);
+	if (!pilot || pilot->empty()) return;
 
-	DisplayMessage("Assigning Stand: " + event->componentId + " for: " + event->callsign);
+    if (event->componentId == "None")
+    {
+        if (!pilot->stand.empty())
+        {
+            dataManager_->freeStand(pilot->stand);
+            pilot->stand.clear();
+            UpdateTagItems(pilot->callsign);
+        }
+        return;
+	}
+
+	dataManager_->assignStandToPilot(*pilot, event->componentId);
+    UpdateTagItems(pilot->callsign);
 }
 
 void NeoSTAND::TagProcessing(const std::string &callsign, const std::string &actionId, const std::string &userInput)
@@ -87,6 +99,13 @@ inline void NeoSTAND::updateStandMenuButtons(const std::string& icao)
     PluginSDK::Tag::DropdownComponentStyle style;
 
     style.textAlign = PluginSDK::Tag::DropdownAlignmentType::Center;
+
+    dropdownComponent.id = "None";
+    dropdownComponent.type = PluginSDK::Tag::DropdownComponentType::Button;
+    dropdownComponent.text = "None";
+    dropdownComponent.requiresInput = false;
+    dropdownComponent.style = style;
+    scrollArea.children.push_back(dropdownComponent);
 
 
     for (const auto& stand : stands) {
