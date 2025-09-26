@@ -222,6 +222,7 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 
 void NeoSTAND::runScopeUpdate() {
     updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
+
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
 
@@ -257,19 +258,33 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             continue;
 		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
 
-        if (!aircraft.position.onGround && dataManager_->pilotExists(aircraft.callsign)) {
-            if (fp.has_value() && dataManager_->isConcernedAircraft(*fp)) {
-
-            }
-        }
-
-        if (aircraft.position.groundSpeed > 3 || !fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
+        if (aircraft.position.groundSpeed > 3) {
             if (!dataManager_->isArrival(aircraft.callsign)) {
 				dataManager_->removePilot(aircraft.callsign);
                 continue;
             }
         }
-		std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign);
+        if (!fp.has_value() && !ignoredCallsigns_.contains(aircraft.callsign)) {
+			// static & no flightplan -> check against all Stands
+			std::vector<std::string> activeAirports = dataManager_->getAllActiveAirports();
+            for (const auto& icao : activeAirports) {
+                std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign, icao);
+                if (!currentStand.empty()) {
+                    std::string icao = currentStand.substr(currentStand.length() - 4, 4);
+                    currentStand = currentStand.substr(0, currentStand.length() - 5);
+                    DataManager::Stand stand;
+                    stand.name = currentStand;
+                    stand.callsign = aircraft.callsign;
+                    stand.icao = icao;
+                    dataManager_->addStandToOccupied(stand);
+                    break;
+                }
+			}
+			ignoredCallsigns_.insert(aircraft.callsign);
+			continue;
+        }
+
+        std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign);
         if (!currentStand.empty()) {
             std::string icao = currentStand.substr(currentStand.length() - 4, 4);
             currentStand = currentStand.substr(0, currentStand.length() - 5);
