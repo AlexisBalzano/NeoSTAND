@@ -374,7 +374,7 @@ void DataManager::assignStands(const std::string& callsign)
 		return;
 	}
 
-	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available before filtering: " + std::to_string(standsJson.size()));
+	//LOG_DEBUG(Logger::LogLevel::Info, "Total stands available before filtering: " + std::to_string(standsJson.size()));
 
 	// Filter stands based on criteria
 	auto it = standsJson.begin();
@@ -385,7 +385,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("WTC")) {
 			std::string wtc = stand["WTC"].get<std::string>();
 			if (wtc.find(pilot->aircraftWTC) == std::string::npos) {
-				LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to WTC mismatch. Stand: " + wtc + " Pilot: " + pilot->aircraftWTC);
+				//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to WTC mismatch. Stand: " + wtc + " Pilot: " + pilot->aircraftWTC);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -404,7 +404,7 @@ void DataManager::assignStands(const std::string& callsign)
 			default: pilotType = ""; break;
 			}
 			if (use != pilotType) {
-				LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
+				//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -414,7 +414,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("Schengen")) {
 			bool schegen = stand["Schengen"].get<bool>();
 			if (schegen == true && pilot->isSchengen == false) {
-				LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot->isSchengen ? "true" : "false"));
+				//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot->isSchengen ? "true" : "false"));
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -424,7 +424,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("National")) {
 			bool national = stand["National"].get<bool>();
 			if (national != pilot->isNational) {
-				LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to National mismatch. Stand: " + (national ? "true" : "false") + " Pilot: " + (pilot->isNational ? "true" : "false"));
+				//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to National mismatch. Stand: " + (national ? "true" : "false") + " Pilot: " + (pilot->isNational ? "true" : "false"));
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -442,14 +442,14 @@ void DataManager::assignStands(const std::string& callsign)
 
 		// Check if stand is occupied
 		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it, icao](const Stand& stand){ return it.key() == stand.name && icao == stand.icao;}) != occupiedStands_.end()) {
-			LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is already occupied.");
+			//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is already occupied.");
 			it = standsJson.erase(it);
 			continue;
 		}
 
 		// Check if stand is blocked
 		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it, icao](const Stand& stand) { return it.key() == stand.name && icao == stand.icao; }) != blockedStands_.end()) {
-			LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is blocked.");
+			//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is blocked.");
 			it = standsJson.erase(it);
 			continue;
 		}
@@ -505,6 +505,15 @@ void DataManager::assignStands(const std::string& callsign)
 
 void DataManager::assignStandToPilot(Pilot& pilot, const std::string& standName)
 {
+	// Check if configJSON is already the right one, if not, retrieve it
+	std::string icao = pilot.destination;
+	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
+	if (!retrieveCorrectConfigJson(icao)) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + pilot.callsign);
+		pilot.stand = "";
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock(dataMutex_);
 	// Check if the stand is already occupied
 	if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(),
@@ -523,6 +532,38 @@ void DataManager::assignStandToPilot(Pilot& pilot, const std::string& standName)
 		return;
 	}
 	pilot.stand = standName;
+
+	// Release any previously occupied stand by this pilot
+	occupiedStands_.erase(std::remove_if(occupiedStands_.begin(), occupiedStands_.end(),
+		[&pilot](const Stand& s) { return s.callsign == pilot.callsign; }), occupiedStands_.end());
+	blockedStands_.erase(std::remove_if(blockedStands_.begin(), blockedStands_.end(),
+		[&pilot](const Stand& s) { return s.callsign == pilot.callsign; }), blockedStands_.end());
+
+	// Mark the stand as occupied
+	Stand stand;
+	stand.name = pilot.stand;
+	stand.icao = pilot.destination;
+	stand.callsign = pilot.callsign;
+	occupiedStands_.push_back(stand);
+	loggerAPI_->log(Logger::LogLevel::Info, "Manually assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
+
+	// Check if the stand is blocking other stands
+	if (configJson_.contains("Stands") && configJson_["Stands"].contains(stand.name)) {
+		const auto& standJson = configJson_["Stands"][stand.name];
+		if (standJson.contains("Block") && standJson["Block"].is_array())
+		{
+			for (const auto& blockedStandName : standJson["Block"]) {
+				Stand blockedStand;
+				blockedStand.name = blockedStandName.get<std::string>();
+				blockedStand.icao = stand.icao;
+				blockedStand.callsign = stand.callsign;
+				if (std::find(blockedStands_.begin(), blockedStands_.end(), blockedStand) == blockedStands_.end()) {
+					blockedStands_.push_back(blockedStand);
+					loggerAPI_->log(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot.stand);
+				}
+			}
+		}
+	}
 }
 
 void DataManager::freeStand(const std::string& standName)
@@ -602,7 +643,7 @@ bool DataManager::saveDownloadedAirportConfig(const nlohmann::ordered_json& json
 	return true;
 }
 
-std::string DataManager::isAircraftOnStand(const std::string& callsign)
+std::string DataManager::isAircraftOnStand(const std::string& callsign, const std::string& icao)
 {
 	std::optional<Aircraft::Aircraft> aircraftOpt = aircraftAPI_->getByCallsign(callsign);
 	std::optional<Flightplan::Flightplan> flightplanOpt = flightplanAPI_->getByCallsign(callsign);
@@ -612,15 +653,20 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 
 	if (!aircraft.position.onGround) return "";
 
-	std::string icao;
-	std::optional<double> distOrigin = aircraftAPI_->getDistanceFromOrigin(callsign);
-	std::optional<double> distDest = aircraftAPI_->getDistanceToDestination(callsign);
-	if (!distOrigin.has_value() || !distDest.has_value()) return "";
-	if (*distOrigin - *distDest > 0.) icao = flightplanOpt->destination;
-	else icao = flightplanOpt->origin;
+	std::string icaoFromAircraft;
+	if (icao.empty()) {
+		std::optional<double> distOrigin = aircraftAPI_->getDistanceFromOrigin(callsign);
+		std::optional<double> distDest = aircraftAPI_->getDistanceToDestination(callsign);
+		if (!distOrigin.has_value() || !distDest.has_value()) return "";
+		if (*distOrigin - *distDest > 0.) icaoFromAircraft = flightplanOpt->destination;
+		else icaoFromAircraft = flightplanOpt->origin;
+	}
+	else {
+		icaoFromAircraft = icao;
+	}
 
 	std::vector<std::string> activeAirports = getAllActiveAirports();
-	if (std::find(activeAirports.begin(), activeAirports.end(), icao) == activeAirports.end()) return "";
+	if (std::find(activeAirports.begin(), activeAirports.end(), icaoFromAircraft) == activeAirports.end()) return "";
 
 	auto haversineMeters = [](double lat1Deg, double lon1Deg, double lat2Deg, double lon2Deg) -> double {
 		constexpr double kPi = 3.14159265358979323846;
@@ -638,9 +684,9 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 		};
 
 	// Load stands for the airport
-	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
-	if (!retrieveCorrectConfigJson(icao)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
+	std::transform(icaoFromAircraft.begin(), icaoFromAircraft.end(), icaoFromAircraft.begin(), ::toupper);
+	if (!retrieveCorrectConfigJson(icaoFromAircraft)) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icaoFromAircraft);
 		return "";
 	}
 
@@ -650,7 +696,7 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 		standsJson = configJson_["Stands"];
 	}
 	else {
-		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icao);
+		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icaoFromAircraft);
 		return "";
 	}
 
@@ -698,7 +744,7 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 		);
 
 		if (distanceMeters <= radiusMeters) {
-			return it.key() + " " + icao;
+			return it.key() + " " + icaoFromAircraft;
 		}
 	}
 
