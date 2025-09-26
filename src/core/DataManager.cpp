@@ -23,6 +23,9 @@ DataManager::DataManager(stand::NeoSTAND* neoSTAND)
 	configPath_ = getDllDirectory();
 	loadSettingJson();
 	bool success = parseSettings();
+	configsError_.clear();
+	configsDownloaded_.clear();
+	callsignError_.clear();
 }
 
 
@@ -66,43 +69,129 @@ void DataManager::DisplayMessageFromDataManager(const std::string& message, cons
 	
 int DataManager::retrieveConfigJson(const std::string& icao)
 {
-    std::string fileName = icao + ".json";
-    std::filesystem::path jsonPath = configPath_ / "Plugins" / "NeoSTAND" / fileName;
+	std::string icaoUpper = icao;
+	std::transform(icaoUpper.begin(), icaoUpper.end(), icaoUpper.begin(), ::toupper);
+	const std::string fileName = icaoUpper + ".json";
+	const std::filesystem::path jsonPath = configPath_ / "Plugins/NeoSTAND" / fileName;
 
-    std::ifstream config(jsonPath);
-    if (!config.is_open()) {
-        DisplayMessageFromDataManager("Could not open JSON file: " + jsonPath.string(), "DataManager");
-        loggerAPI_->log(Logger::LogLevel::Error, "Could not open JSON file: " + jsonPath.string());
-        return -1;
-    }
+	nlohmann::ordered_json tempJson;
+	bool alreadyDownloaded = false;
 
-    nlohmann::ordered_json parsed;
-    try {
-        config >> parsed;
-        if (parsed.contains("version")) {
-            if (!isCorrectJsonVersion(parsed["version"].get<std::string>(), fileName)) {
-                return -1;
-            }
-        }
-        else {
-            DisplayMessageFromDataManager("Config version missing in JSON file: " + fileName, "DataManager");
-        }
-    }
-    catch (...) {
-        DisplayMessageFromDataManager("Error parsing JSON file: " + jsonPath.string(), "DataManager");
-        loggerAPI_->log(Logger::LogLevel::Error, "Error parsing JSON file: " + jsonPath.string());
-        return -1;
-    }
+	{
+		std::lock_guard<std::mutex> lock(dataMutex_);
+		if (configsDownloaded_.contains(icaoUpper)) alreadyDownloaded = true;
+	}
 
-    configJson_ = std::move(parsed);
-    
+	for (int attempt = 0; attempt < 2; ++attempt)
+	{
+		std::ifstream config(jsonPath);
+		if (!config.is_open())
+		{
+			if (!alreadyDownloaded)
+			{
+				configJson_.clear();
+				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
+				alreadyDownloaded = true;
+				if (!downloadOk) return -1;
+				continue;
+			}
+			bool firstErrorForFile;
+			{
+				std::lock_guard<std::mutex> lock(dataMutex_);
+				firstErrorForFile = !configsError_.contains(icaoUpper);
+				configsError_.insert(icaoUpper);
+			}
+			if (firstErrorForFile)
+			{
+				DisplayMessageFromDataManager("Could not open JSON file: " + jsonPath.string(), "DataManager");
+				loggerAPI_->log(Logger::LogLevel::Error, "Could not open JSON file: " + jsonPath.string());
+			}
 
-    return 0;
+			return -1;
+		}
+
+		try {
+			config >> tempJson;
+		}
+		catch (...) {
+			DisplayMessageFromDataManager("Error parsing JSON file: " + jsonPath.string(), "DataManager");
+			loggerAPI_->log(Logger::LogLevel::Error, "Error parsing JSON file: " + jsonPath.string());
+			return -1;
+		}
+
+		if (!tempJson.contains("version"))
+		{
+			if (!alreadyDownloaded)
+			{
+				configJson_.clear();
+				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
+				alreadyDownloaded = true;
+				if (!downloadOk) return -1;
+				std::this_thread::sleep_for(std::chrono::milliseconds(300));
+				continue;
+			}
+			{
+				std::lock_guard<std::mutex> lock(dataMutex_);
+				if (!configsError_.contains(icaoUpper))
+					configsError_.insert(icaoUpper);
+				else return -1;
+			}
+			DisplayMessageFromDataManager("Config version missing in JSON file: " + fileName, "DataManager");
+			loggerAPI_->log(Logger::LogLevel::Error, "Config version missing in JSON file: " + fileName);
+			return -1;
+		}
+
+		const std::string versionRead = tempJson["version"].get<std::string>();
+		std::string version = neoSTAND_->getConfigVersion();
+		if (!version.empty() && versionRead != version)
+		{
+			bool firstErrorForFile;
+			{
+				std::lock_guard<std::mutex> lock(dataMutex_);
+				firstErrorForFile = !configsError_.contains(icaoUpper);
+				configsError_.insert(icaoUpper);
+			}
+
+			if (firstErrorForFile)
+			{
+				DisplayMessageFromDataManager("Config version mismatch! Expected: " + version + ", Found: " + versionRead + " (" + fileName + ")", "DataManager");
+				loggerAPI_->log(Logger::LogLevel::Error, "Config version mismatch! Expected: " + version + ", Found: " + versionRead + " " + fileName);
+			}
+
+			if (!alreadyDownloaded)
+			{
+				configJson_.clear();
+				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
+				alreadyDownloaded = true;
+				if (!downloadOk)
+				{
+					loggerAPI_->log(Logger::LogLevel::Warning, "Download attempt after version mismatch failed: " + fileName);
+					return -1;
+				}
+				std::this_thread::sleep_for(std::chrono::milliseconds(300));
+				continue;
+			}
+			return 0;
+		}
+		break;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(dataMutex_);
+		if (configsError_.contains(icaoUpper)) {
+			configsError_.erase(icaoUpper);
+			DisplayMessageFromDataManager("Successfully redownloaded config for: " + icaoUpper, "DataManager");
+			loggerAPI_->log(Logger::LogLevel::Info, "Successfully redownloaded config for: " + icaoUpper);
+		}
+		configJson_ = tempJson;
+		configsDownloaded_.insert(icaoUpper);
+	}
+	return 0;
 }
 
 bool DataManager::retrieveCorrectConfigJson(const std::string& icao)
 {
-	if (!configJson_.contains(icao) || configJson_.empty()) {
+	if (!(configJson_.contains("ICAO") && configJson_["ICAO"].get<std::string>() == icao) || configJson_.empty()) {
 		if (retrieveConfigJson(icao) == -1) return false;
 	}
 	return true;
@@ -172,6 +261,10 @@ bool DataManager::parseSettings()
 		DisplayMessageFromDataManager(std::string(key) + " missing or not a number in config.json, using default", "DataManager");
 		return defVal;
 		};
+
+	if (configJson_.contains("config_github_url") && configJson_["config_github_url"].is_string()) {
+		configUrl_ = configJson_["config_github_url"].get<std::string>();
+	}
 
 	updateInterval_ = readInt("update_interval", stand::DEFAULT_UPDATE_INTERVAL);
 	if (updateInterval_ <= 0) {
@@ -250,7 +343,6 @@ bool DataManager::removePilot(const std::string& callsign)
 void DataManager::assignStands(const std::string& callsign)
 {
 	Pilot *pilot = getPilotByCallsign(callsign);
-	std::lock_guard<std::mutex> lock(dataMutex_);
 	if (!pilot) return;
 
 	// Check if configJSON is already the right one, if not, retrieve it
@@ -261,6 +353,7 @@ void DataManager::assignStands(const std::string& callsign)
 		pilot->stand = "";
 		return;
 	}
+	std::lock_guard<std::mutex> lock(dataMutex_);
 	
 	// If aircraft occupies stand already, assign the occupied stand
 	auto occupiedIt = std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&callsign](const Stand& stand) { return callsign == stand.callsign; });
@@ -365,8 +458,11 @@ void DataManager::assignStands(const std::string& callsign)
 	}
 
 	if (standsJson.empty()) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
-		DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
+		if (!callsignError_.contains(pilot->callsign)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
+			DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
+			callsignError_.insert(pilot->callsign);
+		}
 		pilot->stand = "";
 		return;
 	}
@@ -480,6 +576,32 @@ void DataManager::addStandToOccupied(const Stand& stand)
 	}
 }
 
+bool DataManager::saveDownloadedAirportConfig(const nlohmann::ordered_json& json, std::string icao)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
+	std::string fileName = icao + ".json";
+	std::filesystem::path jsonPath = configPath_ / "Plugins/NeoSTAND" / fileName;
+	std::ofstream configFile(jsonPath);
+	if (!configFile.is_open()) {
+		loggerAPI_->log(Logger::LogLevel::Error, "Could not open file to save downloaded config: " + jsonPath.string());
+		return false;
+	}
+	try {
+		configFile << std::setw(4) << json << std::endl;
+		configsDownloaded_.insert(icao);
+	}
+	catch (...) {
+		loggerAPI_->log(Logger::LogLevel::Error, "Error writing to file: " + jsonPath.string());
+		return false;
+	}
+
+	// Always update in-memory representation with the freshly downloaded JSON.
+	configJson_ = json;
+
+	return true;
+}
+
 std::string DataManager::isAircraftOnStand(const std::string& callsign)
 {
 	std::optional<Aircraft::Aircraft> aircraftOpt = aircraftAPI_->getByCallsign(callsign);
@@ -516,13 +638,13 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign)
 		};
 
 	// Load stands for the airport
-	std::lock_guard<std::mutex> lock(dataMutex_);
 	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
 	if (!retrieveCorrectConfigJson(icao)) {
 		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
 		return "";
 	}
 
+	std::lock_guard<std::mutex> lock(dataMutex_);
 	nlohmann::json standsJson;
 	if (configJson_.contains("Stands")) {
 		standsJson = configJson_["Stands"];
@@ -726,12 +848,12 @@ std::vector<DataManager::Stand> DataManager::getBlockedStands()
 
 std::vector<DataManager::Stand> DataManager::getAllStandsForAirport(const std::string& icao)
 {
-	std::lock_guard<std::mutex> lock(dataMutex_);
 	if (!retrieveCorrectConfigJson(icao)) {
 		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
 		return {};
 	}
 
+	std::lock_guard<std::mutex> lock(dataMutex_);
 	nlohmann::json standsJson;
 	if (configJson_.contains("Stands")) {
 		standsJson = configJson_["Stands"];

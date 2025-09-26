@@ -73,7 +73,7 @@ public:
 	void assignStandToPilot(Pilot& pilot, const std::string& standName);
 	void freeStand(const std::string& standName);
 	void addStandToOccupied(const Stand& stand);
-	std::string isAircraftOnStand(const std::string& callsign);
+	bool saveDownloadedAirportConfig(const nlohmann::ordered_json& json, std::string icao);
 
 	std::vector<std::string> getAllActiveAirports();
 	std::vector<Pilot> getAllPilots();
@@ -87,11 +87,13 @@ public:
 	double getMaxDistance() const { return maxDistance_; }
 	std::vector<Stand> getAllStandsForAirport(const std::string& icao);
 	std::vector<Stand> getAvailableStandsForAirport(const std::string& icao);
+	std::string getConfigUrl() const { return configUrl_; }
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isArrival(const std::string& callsign);
 	bool isSchengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
+	std::string isAircraftOnStand(const std::string& callsign);
 
 private:
 	Aircraft::AircraftAPI* aircraftAPI_ = nullptr;
@@ -106,10 +108,15 @@ private:
 	std::filesystem::path configPath_;
 	nlohmann::ordered_json configJson_;
 	nlohmann::ordered_json settingJson_;
+	std::string configUrl_;
 	std::vector<Pilot> pilots_;
 	std::vector<std::string> activeAirports_;
 	std::vector<Stand> occupiedStands_;
 	std::vector<Stand> blockedStands_;
+
+	std::unordered_set<std::string> configsError_;
+	std::unordered_set<std::string> configsDownloaded_;
+	std::unordered_set<std::string> callsignError_;
 
 	std::unordered_set<std::string> gaTypes;
 	std::unordered_set<std::string> militaryTypes;
