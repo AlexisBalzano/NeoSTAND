@@ -93,7 +93,7 @@ public:
 	bool isArrival(const std::string& callsign);
 	bool isSchengen(const Flightplan::Flightplan& fp);
 	bool isNational(const Flightplan::Flightplan& fp);
-	std::string isAircraftOnStand(const std::string& callsign);
+	std::string isAircraftOnStand(const std::string& callsign, const std::string& icao="");
 
 private:
 	Aircraft::AircraftAPI* aircraftAPI_ = nullptr;
