@@ -258,13 +258,17 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             continue;
 		std::optional<Flightplan::Flightplan> fp = flightplanAPI_->getByCallsign(aircraft.callsign);
 
+        if (ignoredCallsigns_.contains(aircraft.callsign)) {
+            continue;
+        }
+
         if (aircraft.position.groundSpeed > 3) {
             if (!dataManager_->isArrival(aircraft.callsign)) {
 				dataManager_->removePilot(aircraft.callsign);
                 continue;
             }
         }
-        if (!fp.has_value() && !ignoredCallsigns_.contains(aircraft.callsign)) {
+        if (!fp.has_value()) {
 			// static & no flightplan -> check against all Stands
 			std::vector<std::string> activeAirports = dataManager_->getAllActiveAirports();
             for (const auto& icao : activeAirports) {

@@ -57,6 +57,7 @@ namespace stand {
 		Tag::TagInterface* GetTagInterface() const { return tagInterface_; }
         ClientInformation GetClientInfo() const { return clientInfo_; };
         DataManager* GetDataManager() const { return dataManager_.get(); }
+		std::unordered_set<std::string> GetIgnoredCallsigns() const { return ignoredCallsigns_; }
 
         // Getters
         std::string getConfigVersion() const { return configVersion; }
@@ -78,6 +79,7 @@ namespace stand {
         std::string occupiedCommandId_;
         std::string blockedCommandId_;
         std::string pilotCommandId_;
+		std::string dumpCommandId_;
 
 
     private:

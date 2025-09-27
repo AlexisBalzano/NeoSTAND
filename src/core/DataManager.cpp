@@ -11,12 +11,6 @@
 #define LOG_DEBUG(loglevel, message) void(0)
 #endif
 
-#ifdef CONFIG_DEBUG
-#define LOG_CONFIG(loglevel, message) loggerAPI_->log(loglevel, message)
-#else
-#define LOG_CONFIG(loglevel, message) void(0)
-#endif
-
 DataManager::DataManager(stand::NeoSTAND* neoSTAND)
 	: neoSTAND_(neoSTAND) {
 	aircraftAPI_ = neoSTAND_->GetAircraftAPI();
@@ -351,6 +345,9 @@ void DataManager::assignStands(const std::string& callsign)
 	Pilot *pilot = getPilotByCallsign(callsign);
 	if (!pilot) return;
 
+	std::vector<std::string> errorMessages;
+	errorMessages.reserve(300);
+
 	// Check if configJSON is already the right one, if not, retrieve it
 	std::string icao = pilot->destination;
 	std::transform(icao.begin(), icao.end(), icao.begin(), ::toupper);
@@ -365,14 +362,14 @@ void DataManager::assignStands(const std::string& callsign)
 	auto occupiedIt = std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&callsign](const Stand& stand) { return callsign == stand.callsign; });
 	if (occupiedIt != occupiedStands_.end()) {
 		pilot->stand = occupiedIt->name;
-		loggerAPI_->log(Logger::LogLevel::Info, "Pilot: " + pilot->callsign + " already occupies stand: " + pilot->stand);
+		LOG_DEBUG(Logger::LogLevel::Info, "Pilot: " + pilot->callsign + " already occupies stand: " + pilot->stand);
 		return;
 	}
 
 	nlohmann::json standsJson;
 	if (configJson_.contains("Stands")) {
 		standsJson = configJson_["Stands"];
-		loggerAPI_->log(Logger::LogLevel::Info, "Assigning stand for pilot: " + pilot->callsign + " at " + pilot->destination);
+		LOG_DEBUG(Logger::LogLevel::Info, "Assigning stand for pilot: " + pilot->callsign + " at " + pilot->destination);
 	}
 	else {
 		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icao);
@@ -380,7 +377,7 @@ void DataManager::assignStands(const std::string& callsign)
 		return;
 	}
 
-	LOG_CONFIG(Logger::LogLevel::Info, "Total stands available before filtering: " + std::to_string(standsJson.size()));
+	errorMessages.push_back("Total stands available before filtering: " + std::to_string(standsJson.size()));
 
 	// Filter stands based on criteria
 	auto it = standsJson.begin();
@@ -391,7 +388,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("WTC")) {
 			std::string wtc = stand["WTC"].get<std::string>();
 			if (wtc.find(pilot->aircraftWTC) == std::string::npos) {
-				LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to WTC mismatch. Stand: " + wtc + " Pilot: " + pilot->aircraftWTC);
+				errorMessages.push_back("Removing stand " + it.key() + " due to WTC mismatch. Stand: " + wtc + " Pilot: " + pilot->aircraftWTC);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -410,7 +407,7 @@ void DataManager::assignStands(const std::string& callsign)
 			default: pilotType = ""; break;
 			}
 			if (use.find(pilotType) == std::string::npos) {
-				LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
+				errorMessages.push_back("Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -420,7 +417,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("Schengen")) {
 			bool schegen = stand["Schengen"].get<bool>();
 			if (schegen == true && pilot->isSchengen == false) {
-				LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot->isSchengen ? "true" : "false"));
+				errorMessages.push_back("Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot->isSchengen ? "true" : "false"));
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -430,7 +427,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("National")) {
 			bool national = stand["National"].get<bool>();
 			if (national != pilot->isNational) {
-				LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to National mismatch. Stand: " + (national ? "true" : "false") + " Pilot: " + (pilot->isNational ? "true" : "false"));
+				errorMessages.push_back("Removing stand " + it.key() + " due to National mismatch. Stand: " + (national ? "true" : "false") + " Pilot: " + (pilot->isNational ? "true" : "false"));
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -440,7 +437,7 @@ void DataManager::assignStands(const std::string& callsign)
 		if (stand.contains("Callsigns")) {
 			std::vector<std::string> callsigns = stand["Callsigns"].get<std::vector<std::string>>();
 			if (callsign.length() < 3 || std::find(callsigns.begin(), callsigns.end(), pilot->callsign.substr(0, 3)) == callsigns.end()) {
-				LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Callsign mismatch. Pilot: " + pilot->callsign);
+				errorMessages.push_back("Removing stand " + it.key() + " due to Callsign mismatch. Pilot: " + pilot->callsign);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -448,14 +445,14 @@ void DataManager::assignStands(const std::string& callsign)
 
 		// Check if stand is occupied
 		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it, icao](const Stand& stand){ return it.key() == stand.name && icao == stand.icao;}) != occupiedStands_.end()) {
-			LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is already occupied.");
+			errorMessages.push_back("Removing stand " + it.key() + " because it is already occupied.");
 			it = standsJson.erase(it);
 			continue;
 		}
 
 		// Check if stand is blocked
 		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it, icao](const Stand& stand) { return it.key() == stand.name && icao == stand.icao; }) != blockedStands_.end()) {
-			LOG_CONFIG(Logger::LogLevel::Info, "Removing stand " + it.key() + " because it is blocked.");
+			errorMessages.push_back("Removing stand " + it.key() + " because it is blocked.");
 			it = standsJson.erase(it);
 			continue;
 		}
@@ -466,14 +463,15 @@ void DataManager::assignStands(const std::string& callsign)
 	if (standsJson.empty()) {
 		if (!callsignError_.contains(pilot->callsign)) {
 			loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
-			DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination);
+			DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot->callsign + " at " + pilot->destination + ". Printed error to log File Documents/NeoRadar/logs/plugins/NeoSTAND/NeoSTAND_debug_" + pilot->callsign + ".log");
 			callsignError_.insert(pilot->callsign);
+			printToFile(errorMessages, "NeoSTAND_debug_" + pilot->callsign + ".log");
 		}
 		pilot->stand = "";
 		return;
 	}
 
-	LOG_CONFIG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
+	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
 
 	// Randomly select a stand from the filtered list (object-safe)
 	std::srand(static_cast<unsigned int>(std::time(nullptr)));
@@ -486,7 +484,7 @@ void DataManager::assignStands(const std::string& callsign)
 	const auto& selectedStand = itSel.value();
 	pilot->stand = selectedStandName;
 
-	LOG_CONFIG(Logger::LogLevel::Info, "Assigned stand " + pilot->stand + " to pilot: " + pilot->callsign);
+	LOG_DEBUG(Logger::LogLevel::Info, "Assigned stand " + pilot->stand + " to pilot: " + pilot->callsign);
 
 	// Mark the stand as occupied
 	Stand stand;
@@ -504,7 +502,7 @@ void DataManager::assignStands(const std::string& callsign)
 			blockedStand.icao = pilot->destination;
 			blockedStand.callsign = pilot->callsign;
 			blockedStands_.push_back(blockedStand);
-			LOG_CONFIG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot->stand);
+			LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot->stand);
 		}
 	}
 }
@@ -646,6 +644,33 @@ bool DataManager::saveDownloadedAirportConfig(const nlohmann::ordered_json& json
 	// Always update in-memory representation with the freshly downloaded JSON.
 	configJson_ = json;
 
+	return true;
+}
+
+bool DataManager::printToFile(const std::vector<std::string>& lines, const std::string& fileName)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	std::filesystem::path dir = configPath_ / "logs" / "plugins" / "NeoSTAND";
+	std::error_code ec;
+	if (!std::filesystem::exists(dir))
+	{
+		if (!std::filesystem::create_directories(dir, ec))
+		{
+			loggerAPI_->log(Logger::LogLevel::Error,
+				"Failed to create log directory: " + dir.string() + " ec=" + ec.message());
+			return false;
+		}
+	}
+	std::filesystem::path filePath = dir / fileName;
+	std::ofstream outFile(filePath);
+	if (!outFile.is_open()) {
+		loggerAPI_->log(Logger::LogLevel::Error, "Could not open file to write: " + filePath.string());
+		return false;
+	}
+	for (const auto& line : lines) {
+		outFile << line << std::endl;
+	}
+	outFile.close();
 	return true;
 }
 

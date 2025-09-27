@@ -74,6 +74,7 @@ public:
 	void freeStand(const std::string& standName);
 	void addStandToOccupied(const Stand& stand);
 	bool saveDownloadedAirportConfig(const nlohmann::ordered_json& json, std::string icao);
+	bool printToFile(const std::vector<std::string>& lines, const std::string& fileName);
 
 	std::vector<std::string> getAllActiveAirports();
 	std::vector<Pilot> getAllPilots();
@@ -88,6 +89,10 @@ public:
 	std::vector<Stand> getAllStandsForAirport(const std::string& icao);
 	std::vector<Stand> getAvailableStandsForAirport(const std::string& icao);
 	std::string getConfigUrl() const { return configUrl_; }
+	std::unordered_set<std::string> getCargoTypes() const { return cargo; }
+	std::unordered_set<std::string> getHeliTypes() const { return heliTypes; }
+	std::unordered_set<std::string> getMilitaryTypes() const { return militaryTypes; }
+	std::unordered_set<std::string> getGATypes() const { return gaTypes; }
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isArrival(const std::string& callsign);
