@@ -190,8 +190,8 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
 		  ".stand airports",
 		  ".stand occupied",
 		  ".stand blocked",
-		  ".stand pilot <callsign>",
           ".stand dump"
+		  ".stand pilot <callsign>",
             })
         {
             neoSTAND_->DisplayMessage(line);
