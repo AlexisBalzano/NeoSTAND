@@ -306,6 +306,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
 void stand::NeoSTAND::OnFlightplanUpdated(const Flightplan::FlightplanUpdatedEvent* event)
 {
 	dataManager_->removePilot(event->callsign); // Force recompute
+	ignoredCallsigns_.erase(event->callsign);
 	ClearTagCache(event->callsign);
 	dataManager_->updatePilot(event->callsign);
 }
@@ -313,12 +314,14 @@ void stand::NeoSTAND::OnFlightplanUpdated(const Flightplan::FlightplanUpdatedEve
 void stand::NeoSTAND::OnFlightplanRemoved(const Flightplan::FlightplanRemovedEvent* event)
 {
     dataManager_->removePilot(event->callsign);
+	ignoredCallsigns_.insert(event->callsign);
 	ClearTagCache(event->callsign);
 }
 
 void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnectedEvent* event)
 {
     dataManager_->removePilot(event->callsign);
+	ignoredCallsigns_.erase(event->callsign);
 	ClearTagCache(event->callsign);
 }
 
