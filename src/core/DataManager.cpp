@@ -473,7 +473,40 @@ void DataManager::assignStands(const std::string& callsign)
 
 	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
 
-	// Randomly select a stand from the filtered list (object-safe)
+	// Determine lowest priority first (keep all stands sharing that value)
+	int lowestPriority = std::numeric_limits<int>::max();
+	bool anyPriority = false;
+	for (auto& [standName, stand] : standsJson.items()) {
+		if (stand.contains("Priority") && stand["Priority"].is_number_integer()) {
+			int p = stand["Priority"].get<int>();
+			if (p < lowestPriority) lowestPriority = p;
+			anyPriority = true;
+		}
+	}
+
+	if (anyPriority) {
+		// Erase every stand whose priority != lowestPriority.
+		// Use iterator loop to avoid invalidation issues.
+		for (auto it = standsJson.begin(); it != standsJson.end(); ) {
+			auto& stand = it.value();
+			if (stand.contains("Priority") && stand["Priority"].is_number_integer()) {
+				int p = stand["Priority"].get<int>();
+				if (p != lowestPriority) {
+					it = standsJson.erase(it);
+					continue;
+				}
+			}
+			else {
+				// If a stand has no Priority while some priorities exist, drop it.
+				it = standsJson.erase(it);
+				continue;
+			}
+			++it;
+		}
+	}
+
+	// Only stands with lowest priority remain or all stands if none had priority
+	//Randomly select a stand from the filtered list (object-safe)
 	std::srand(static_cast<unsigned int>(std::time(nullptr)));
 	const size_t count = standsJson.size();
 
