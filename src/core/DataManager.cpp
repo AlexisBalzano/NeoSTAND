@@ -403,7 +403,7 @@ void DataManager::assignStands(const std::string& callsign)
 			case AircraftType::cargo: pilotType = "C"; break;
 			default: pilotType = ""; break;
 			}
-			if (use != pilotType) {
+			if (use.find(pilotType) == std::string::npos) {
 				//LOG_DEBUG(Logger::LogLevel::Info, "Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
 				it = standsJson.erase(it);
 				continue;
