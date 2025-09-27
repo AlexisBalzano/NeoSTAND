@@ -647,7 +647,7 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign, const st
 {
 	std::optional<Aircraft::Aircraft> aircraftOpt = aircraftAPI_->getByCallsign(callsign);
 	std::optional<Flightplan::Flightplan> flightplanOpt = flightplanAPI_->getByCallsign(callsign);
-	if (!aircraftOpt.has_value() || !flightplanOpt.has_value()) return "";
+	if (!aircraftOpt.has_value()) return "";
 
 	Aircraft::Aircraft aircraft = *aircraftOpt;
 
