@@ -6,8 +6,6 @@ constexpr const char *NeoSTAND = "NeoSTAND";
 
 #if defined(DEV)
 constexpr const char *PLUGIN_VERSION = "@CMAKE_PROJECT_VERSION@-dev";
-#elif defined(CONFIG_DEBUG)
-constexpr const char *PLUGIN_VERSION = "@CMAKE_PROJECT_VERSION@-configDBG";
 #else
 constexpr const char *PLUGIN_VERSION = "@CMAKE_PROJECT_VERSION@";
 #endif

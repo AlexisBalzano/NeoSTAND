@@ -18,11 +18,6 @@ if(DEV)
     add_compile_definitions(DEV=1)
 endif()
 
-if(CONFIGDEBUG)
-    message(STATUS "Config Debug mode enabled")
-    add_compile_definitions(CONFIG_DEBUG=1)
-endif()
-
 
 configure_file(
     ${CMAKE_SOURCE_DIR}/src/Version.h.in
