@@ -3,7 +3,6 @@
   "update_interval": 5,
   "max_alt": 15000,
   "max_distance": 50.0,
-  "config_url": "",
   "CargoOperator": [
     "FDX",
     "UPS",
