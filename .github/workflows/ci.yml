@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - Dev
   pull_request:
     branches:
       - main
@@ -145,11 +146,10 @@ jobs:
         with:
           path: all_builds
 
-      # - name: Prepare config files for packaging
-      #   run: |
-      #     mkdir -p plugins/NeoSTAND
-      #     cp src/config/config.json plugins/NeoSTAND/
-      #     cp src/config/AircraftData.json plugins/NeoSTAND/
+      - name: Prepare config files for packaging
+        run: |
+          mkdir -p plugins/NeoSTAND
+          cp src/config/config.json plugins/NeoSTAND/
 
       - name: List downloaded files
         run: ls -R all_builds

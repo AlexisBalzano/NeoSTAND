@@ -8,7 +8,7 @@
 #include "core/DataManager.h"
 #include "utils/Color.h"
 
-constexpr const char* NEOSTAND_VERSION = "v0.0.1";
+constexpr const char* NEOSTAND_VERSION = "v1.0.1";
 
 using namespace PluginSDK;
 
@@ -25,6 +25,8 @@ namespace stand {
 		// Plugin lifecycle methods
         void Initialize(const PluginMetadata& metadata, CoreAPI* coreAPI, ClientInformation info) override;
         std::pair<bool, std::string> newVersionAvailable();
+        bool downloadAirportConfig(std::string icao);
+        std::string getLatestConfigVersion();
         void Shutdown() override;
         void Reset();
         PluginMetadata GetMetadata() const override;
@@ -53,7 +55,12 @@ namespace stand {
         Fsd::FsdAPI* GetFsdAPI() const { return fsdAPI_; }
         PluginSDK::ControllerData::ControllerDataAPI* GetControllerDataAPI() const { return controllerDataAPI_; }
 		Tag::TagInterface* GetTagInterface() const { return tagInterface_; }
+        ClientInformation GetClientInfo() const { return clientInfo_; };
         DataManager* GetDataManager() const { return dataManager_.get(); }
+		std::unordered_set<std::string> GetIgnoredCallsigns() const { return ignoredCallsigns_; }
+
+        // Getters
+        std::string getConfigVersion() const { return configVersion; }
 
     private:
         void runScopeUpdate();
@@ -71,21 +78,27 @@ namespace stand {
 		std::string airportsCommandId_;
         std::string occupiedCommandId_;
         std::string blockedCommandId_;
+        std::string pilotCommandId_;
+		std::string dumpCommandId_;
 
 
     private:
-        // Plugin state
-        bool initialized_ = false;
-        std::thread m_worker;
-        bool m_stop;
-		bool autoMode = true;
         struct TagRenderState {
             std::string value;
             Color colour;
             Color background;
         };
+
+        // Plugin state
+        bool initialized_ = false;
+        std::thread m_worker;
+        bool m_stop;
+		bool autoMode = true;
         std::unordered_map<std::string, std::unordered_map<std::string, TagRenderState>> tagCache_;
         std::mutex tagCacheMutex_;
+        std::string configVersion;
+		std::unordered_set<std::string> ignoredCallsigns_;
+
 
         // APIs
         PluginMetadata metadata_;
@@ -110,6 +123,7 @@ namespace stand {
         void OnTagDropdownAction(const Tag::DropdownActionEvent* event) override;
         void UpdateTagItems(std::string Callsign);
         Color ColorizeStand();
+        void updateStandMenuButtons(const std::string& icao);
 
 	    // TAG Items IDs
 		std::string standItemId_;
