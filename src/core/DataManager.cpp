@@ -26,6 +26,7 @@ DataManager::DataManager(stand::NeoSTAND* neoSTAND)
 	configsError_.clear();
 	configsDownloaded_.clear();
 	callsignError_.clear();
+	aircraftWingspans_.clear();
 }
 
 
@@ -41,6 +42,10 @@ void DataManager::clearData()
 	activeAirports_.clear();
 	occupiedStands_.clear();
 	blockedStands_.clear();
+	configsError_.clear();
+	configsDownloaded_.clear();
+	callsignError_.clear();
+	aircraftWingspans_.clear();
 	if (aircraftAPI_)
 		aircraftAPI_ = nullptr;
 	if (flightplanAPI_)
@@ -319,6 +324,19 @@ bool DataManager::parseSettings()
 		DisplayMessageFromDataManager("No valid General Aviation list in config.json.");
 	}
 
+	if (configJson_.contains("AircraftWingspans") && configJson_["AircraftWingspans"].is_object()) {
+		for (auto& [k, v] : configJson_["AircraftWingspans"].items()) {
+			if (v.is_number()) {
+				std::string key = k;
+				std::transform(key.begin(), key.end(), key.begin(), ::toupper);
+				aircraftWingspans_[key] = v.get<double>();
+			}
+		}
+	}
+	if (aircraftWingspans_.empty()) {
+		loggerAPI_->log(Logger::LogLevel::Warning, "No valid Aircraft Wingspan list in config.json");
+		DisplayMessageFromDataManager("No valid Aircraft Wingspan list in config.json, Size Constrained Stand won't be assignable.");
+	}
 
 	return true;
 }
@@ -384,11 +402,11 @@ void DataManager::assignStands(const std::string& callsign)
 
 	while (it != standsJson.end()) {
 		const auto& stand = *it;
-		// Check WTC
-		if (stand.contains("WTC")) {
-			std::string wtc = stand["WTC"].get<std::string>();
-			if (wtc.find(pilot->aircraftWTC) == std::string::npos) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to WTC mismatch. Stand: " + wtc + " Pilot: " + pilot->aircraftWTC);
+		// Check Size Code
+		if (stand.contains("Code")) {
+			std::string code = stand["Code"].get<std::string>();
+			if (code.find(pilot->aircraftCode) == std::string::npos) {
+				errorMessages.push_back("Removing stand " + it.key() + " due to code mismatch. Stand: " + code + " Pilot: " + pilot->aircraftCode);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -881,6 +899,7 @@ void DataManager::updatePilot(const std::string& callsign)
 	if (!isConcernedAircraft(*flightplan)) return;
 
 	std::string previousStand = "";
+
 	{
 		std::lock_guard<std::mutex> lock(dataMutex_);
 		auto itPilot = std::find_if(pilots_.begin(), pilots_.end(),
@@ -899,7 +918,7 @@ void DataManager::updatePilot(const std::string& callsign)
 	pilot.isSchengen = isSchengen(*flightplan);
 	pilot.isNational = isNational(*flightplan);
 	pilot.aircraftType = getAircraftType(*flightplan);
-	pilot.aircraftWTC = flightplan->wakeCategory;
+	pilot.aircraftCode = getAircraftCode(flightplan->acType);
 	pilot.stand = previousStand;
 
 	{
@@ -935,6 +954,28 @@ DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightp
 	if (gaTypes.contains(acType)) return AircraftType::generalAviation;
 
 	return AircraftType::airliner;
+}
+
+std::string DataManager::getAircraftCode(const std::string& acType)
+{
+	std::lock_guard<std::mutex> lock(dataMutex_);
+	
+	std::string acTypeUpper = acType;
+	std::transform(acTypeUpper.begin(), acTypeUpper.end(), acTypeUpper.begin(), ::toupper);
+
+	auto it = aircraftWingspans_.find(acTypeUpper);
+	if (it == aircraftWingspans_.end()) return "F";
+	
+	double span = it->second;
+
+	// A: <15, B: <24, C: <36, D: <52, E: <65, F: <80
+	if (span < 15.0) return "A";
+	if (span < 24.0) return "B";
+	if (span < 36.0) return "C";
+	if (span < 52.0) return "D";
+	if (span < 65.0) return "E";
+	if (span < 80.0) return "F";
+	return "F";
 }
 
 std::vector<DataManager::Stand> DataManager::getOccupiedStands()

@@ -29,7 +29,7 @@ public:
 	struct Pilot {
 		std::string callsign;
 		std::string destination;
-		std::string aircraftWTC;
+		std::string aircraftCode;
 		AircraftType aircraftType;
 		std::string stand;
 		bool isSchengen;
@@ -81,6 +81,7 @@ public:
 	bool pilotExists(const std::string& callsign);
 	Pilot* getPilotByCallsign(const std::string& callsign);
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
+	std::string getAircraftCode(const std::string& acType);
 	std::vector<Stand> getOccupiedStands();
 	std::vector<Stand> getBlockedStands();
 	int getUpdateInterval() const { return updateInterval_; }
@@ -127,6 +128,8 @@ private:
 	std::unordered_set<std::string> militaryTypes;
 	std::unordered_set<std::string> heliTypes;
 	std::unordered_set<std::string> cargo;
+
+	std::unordered_map<std::string, double> aircraftWingspans_;
 
 	int updateInterval_;
 	int maxAltitude_;

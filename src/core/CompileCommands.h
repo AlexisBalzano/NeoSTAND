@@ -119,7 +119,7 @@ void generateDumpLog(std::vector<std::string>& lines, std::string time, NeoSTAND
     }
     else {
         for (const DataManager::Pilot& pilot : pilots) {
-            lines.push_back("  " + pilot.callsign + " - Dest:" + pilot.destination + " - WTC:" + pilot.aircraftWTC + " - " +
+            lines.push_back("  " + pilot.callsign + " - Dest:" + pilot.destination + " - Code:" + pilot.aircraftCode + " - " +
                 (pilot.isSchengen ? "Schengen" : "Non-Schengen") + " - " +
                 (pilot.isNational ? "National" : "International") + " - Stand: " + (pilot.stand.empty() ? "None" : pilot.stand));
         }
