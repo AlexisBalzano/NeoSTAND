@@ -441,11 +441,20 @@ void DataManager::assignStands(const std::string& callsign)
 			}
 		}
 
-		// Check NATIONAL
-		if (stand.contains("National")) {
-			bool national = stand["National"].get<bool>();
-			if (national != pilot->isNational) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to National mismatch. Stand: " + (national ? "true" : "false") + " Pilot: " + (pilot->isNational ? "true" : "false"));
+		// Check COUNTRIES
+		if (stand.contains("Countries")) {
+			std::vector<std::string> countries = stand["Countries"].get<std::vector<std::string>>();
+			std::string depCountry = pilot->origin;
+			if (depCountry.length() >= 2) depCountry = depCountry.substr(0, 2);
+			else depCountry.clear();
+			bool isFromCountry = std::find(countries.begin(), countries.end(), depCountry) != countries.end();
+			if (!isFromCountry) {
+				std::string allowed;
+				for (size_t i = 0; i < countries.size(); ++i) {
+					if (i) allowed += ',';
+					allowed += countries[i];
+				}
+				errorMessages.push_back("Removing stand " + it.key() + " due to Countries mismatch. Stand: " + allowed + " Pilot: " + depCountry);
 				it = standsJson.erase(it);
 				continue;
 			}
@@ -914,6 +923,7 @@ void DataManager::updatePilot(const std::string& callsign)
 
 	Pilot pilot;
 	pilot.callsign = aircraft.callsign;
+	pilot.origin = flightplan->origin;
 	pilot.destination = flightplan->destination;
 	pilot.isSchengen = isSchengen(*flightplan);
 	pilot.isNational = isNational(*flightplan);

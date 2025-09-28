@@ -28,6 +28,7 @@ public:
 
 	struct Pilot {
 		std::string callsign;
+		std::string origin;
 		std::string destination;
 		std::string aircraftCode;
 		AircraftType aircraftType;
