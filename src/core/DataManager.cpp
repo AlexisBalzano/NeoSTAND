@@ -685,7 +685,7 @@ void DataManager::addStandToOccupied(const Stand& stand)
 {
 	{
 		std::lock_guard<std::mutex> lock(dataMutex_);
-		if (std::find(occupiedStands_.begin(), occupiedStands_.end(), stand) == occupiedStands_.end()) {
+		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&stand](const Stand& s) { return s.name == stand.name; }) == occupiedStands_.end()) {
 			occupiedStands_.push_back(stand);
 		}
 	}

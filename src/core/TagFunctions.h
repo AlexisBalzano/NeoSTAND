@@ -64,6 +64,7 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
         {
             dataManager_->freeStand(pilot->stand);
             pilot->stand.clear();
+			dataManager_->updatePilotStand(pilot->callsign, pilot->stand);
             UpdateTagItems(pilot->callsign);
         }
         return;
