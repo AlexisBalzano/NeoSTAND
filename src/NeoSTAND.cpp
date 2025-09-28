@@ -193,7 +193,7 @@ void NeoSTAND::Shutdown()
 
     if (dataManager_) dataManager_.reset();
 
-    this->unegisterCommand();
+    this->unregisterCommand();
 }
 
 void stand::NeoSTAND::Reset()

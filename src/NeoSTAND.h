@@ -118,11 +118,11 @@ namespace stand {
         void RegisterTagItems();
         void RegisterTagActions();
         void RegisterCommand();
-        void unegisterCommand();
+        void unregisterCommand();
         void OnTagAction(const Tag::TagActionEvent* event) override;
         void OnTagDropdownAction(const Tag::DropdownActionEvent* event) override;
         void UpdateTagItems(std::string Callsign);
-        Color ColorizeStand();
+        //Color ColorizeStand();
         void updateStandMenuButtons(const std::string& icao);
 
 	    // TAG Items IDs
