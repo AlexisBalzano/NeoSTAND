@@ -44,7 +44,7 @@ public:
 		std::string callsign;
 
 		bool operator==(const Stand& other) const {
-			return name == other.name && icao == other.icao;
+			return name == other.name && icao == other.icao && callsign == other.callsign;
 		}
 	};
 
