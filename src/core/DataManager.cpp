@@ -506,15 +506,8 @@ void DataManager::assignStands(const std::string& callsign)
 	}
 
 	// Only stands with lowest priority remain or all stands if none had priority
-	//Randomly select a stand from the filtered list (object-safe)
-	std::srand(static_cast<unsigned int>(std::time(nullptr)));
-	const size_t count = standsJson.size();
-
-	auto itSel = standsJson.begin();
-	std::advance(itSel, std::rand() % count);
-
-	const std::string selectedStandName = itSel.key();
-	const auto& selectedStand = itSel.value();
+	std::string selectedStandName = standsJson.begin().key();
+	auto selectedStand = standsJson.begin().value();
 	pilot->stand = selectedStandName;
 
 	LOG_DEBUG(Logger::LogLevel::Info, "Assigned stand " + pilot->stand + " to pilot: " + pilot->callsign);
