@@ -5,6 +5,8 @@
 #include "../NeoSTAND.h"
 #include "DataManager.h"
 
+using namespace PluginSDK;
+
 #ifdef DEV
 #define LOG_DEBUG(loglevel, message) loggerAPI_->log(loglevel, message)
 #else
@@ -928,7 +930,6 @@ void DataManager::updatePilot(const std::string& callsign)
 	pilot.origin = flightplan->origin;
 	pilot.destination = flightplan->destination;
 	pilot.isSchengen = isSchengen(*flightplan);
-	pilot.isNational = isNational(*flightplan);
 	pilot.aircraftType = getAircraftType(*flightplan);
 	pilot.aircraftCode = getAircraftCode(flightplan->acType);
 	pilot.stand = previousStand;
@@ -1110,11 +1111,4 @@ bool DataManager::isSchengen(const Flightplan::Flightplan& fp)
 		};
 
 	return isInSchengen(fp.origin) && isInSchengen(fp.destination);
-}
-
-bool DataManager::isNational(const Flightplan::Flightplan& fp)
-{
-	std::string origin = fp.origin;
-	std::string destination = fp.destination;
-	return (origin.substr(0, 2) == destination.substr(0, 2));
 }
