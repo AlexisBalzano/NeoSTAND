@@ -331,7 +331,7 @@ void NeoSTAND::UpdateTagItems(std::string callsign) {
 
     Tag::TagContext tagContext;
     tagContext.callsign = callsign;
-    tagContext.colour = ColorizeStand();
+    //tagContext.colour = ColorizeStand();
 
 	std::string stand = pilot->stand.empty() ? "N/A" : pilot->stand;
 
