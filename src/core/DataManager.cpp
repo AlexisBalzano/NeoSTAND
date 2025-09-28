@@ -544,20 +544,22 @@ void DataManager::assignStands(const std::string& callsign)
 	stand.name = pilot->stand;
 	stand.icao = pilot->destination;
 	stand.callsign = pilot->callsign;
-	occupiedStands_.push_back(stand);
-
-	// Check if the stand is blocking other stands
-	if (selectedStand.contains("Block") && selectedStand["Block"].is_array())
-	{
-		for (const auto& blockedStandName : selectedStand["Block"]) {
-			Stand blockedStand;
-			blockedStand.name = blockedStandName.get<std::string>();
-			blockedStand.icao = pilot->destination;
-			blockedStand.callsign = pilot->callsign;
-			blockedStands_.push_back(blockedStand);
-			LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot->stand);
+	if (!selectedStand.contains("Apron") || !selectedStand["Apron"].get<bool>()) { // Only mark as occupied if not an apron stand
+		occupiedStands_.push_back(stand);
+		// Check if the stand is blocking other stands
+		if (selectedStand.contains("Block") && selectedStand["Block"].is_array())
+		{
+			for (const auto& blockedStandName : selectedStand["Block"]) {
+				Stand blockedStand;
+				blockedStand.name = blockedStandName.get<std::string>();
+				blockedStand.icao = pilot->destination;
+				blockedStand.callsign = pilot->callsign;
+				blockedStands_.push_back(blockedStand);
+				LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot->stand);
+			}
 		}
 	}
+
 }
 
 void DataManager::assignStandToPilot(Pilot& pilot, const std::string& standName)
