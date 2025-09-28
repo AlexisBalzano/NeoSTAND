@@ -22,11 +22,11 @@ DataManager::DataManager(stand::NeoSTAND* neoSTAND)
 
 	configPath_ = getDllDirectory();
 	loadSettingJson();
+	aircraftWingspans_.clear();
 	bool success = parseSettings();
 	configsError_.clear();
 	configsDownloaded_.clear();
 	callsignError_.clear();
-	aircraftWingspans_.clear();
 }
 
 
