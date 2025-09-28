@@ -628,17 +628,24 @@ void DataManager::assignStandToPilot(const std::string& callsign, const std::str
 	blockedStands_.erase(std::remove_if(blockedStands_.begin(), blockedStands_.end(),
 		[&pilot](const Stand& s) { return s.callsign == pilot.callsign; }), blockedStands_.end());
 
-	// Mark the stand as occupied
+
+	loggerAPI_->log(Logger::LogLevel::Info, "Manually assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
+
 	Stand stand;
 	stand.name = pilot.stand;
 	stand.icao = pilot.destination;
 	stand.callsign = pilot.callsign;
-	occupiedStands_.push_back(stand);
-	loggerAPI_->log(Logger::LogLevel::Info, "Manually assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
 
 	// Check if the stand is blocking other stands
 	if (configJson_.contains("Stands") && configJson_["Stands"].contains(stand.name)) {
 		const auto& standJson = configJson_["Stands"][stand.name];
+		if (standJson.contains("Apron") && standJson["Apron"].get<bool>()) {
+			// Apron stands are not marked as occupied and do not block other stands
+			return;
+		}
+		// Mark the stand as occupied
+		occupiedStands_.push_back(stand);
+		// Block other stands
 		if (standJson.contains("Block") && standJson["Block"].is_array())
 		{
 			for (const auto& blockedStandName : standJson["Block"]) {
