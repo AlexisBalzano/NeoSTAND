@@ -70,16 +70,17 @@ public:
 	void removeAllPilots();
 	bool removePilot(const std::string& callsign);
 	void assignStands(const std::string& callsign);
-	void assignStandToPilot(Pilot& pilot, const std::string& standName);
+	void assignStandToPilot(const std::string& callsign, const std::string& standName);
 	void freeStand(const std::string& standName);
 	void addStandToOccupied(const Stand& stand);
 	bool saveDownloadedAirportConfig(const nlohmann::ordered_json& json, std::string icao);
 	bool printToFile(const std::vector<std::string>& lines, const std::string& fileName);
+	bool updatePilotStand(const std::string& callsign, const std::string& standName);
 
 	std::vector<std::string> getAllActiveAirports();
 	std::vector<Pilot> getAllPilots();
 	bool pilotExists(const std::string& callsign);
-	Pilot* getPilotByCallsign(const std::string& callsign);
+	std::optional<Pilot> getPilotByCallsign(const std::string& callsign);
 	AircraftType getAircraftType(const Flightplan::Flightplan& fp);
 	std::string getAircraftCode(const std::string& acType);
 	std::vector<Stand> getOccupiedStands();
@@ -99,6 +100,9 @@ public:
 	bool isArrival(const std::string& callsign);
 	bool isSchengen(const Flightplan::Flightplan& fp);
 	std::string isAircraftOnStand(const std::string& callsign, const std::string& icao="");
+
+private:
+	static std::string toUpperCase(const std::string& str);
 
 private:
 	Aircraft::AircraftAPI* aircraftAPI_ = nullptr;

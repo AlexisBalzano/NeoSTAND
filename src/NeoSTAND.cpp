@@ -326,7 +326,7 @@ void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnecte
 }
 
 void NeoSTAND::UpdateTagItems(std::string callsign) {
-    DataManager::Pilot* pilot = dataManager_->getPilotByCallsign(callsign);
+    std::optional<DataManager::Pilot> pilot = dataManager_->getPilotByCallsign(callsign);
     if (!pilot || pilot->empty()) return;
 
     Tag::TagContext tagContext;
