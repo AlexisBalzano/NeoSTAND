@@ -8,7 +8,7 @@
 #include "core/DataManager.h"
 #include "utils/Color.h"
 
-constexpr const char* NEOSTAND_VERSION = "v1.0.1";
+constexpr const char* NEOSTAND_VERSION = "v1.0.2";
 
 using namespace PluginSDK;
 
