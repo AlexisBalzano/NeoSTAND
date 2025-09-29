@@ -447,7 +447,7 @@ void DataManager::assignStands(const std::string& callsign)
 		// Check SCHENGEN
 		if (stand.contains("Schengen")) {
 			bool schegen = stand["Schengen"].get<bool>();
-			if (schegen == true && pilot.isSchengen == false) {
+			if (schegen != pilot.isSchengen) {
 				errorMessages.push_back("Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot.isSchengen ? "true" : "false"));
 				it = standsJson.erase(it);
 				continue;
