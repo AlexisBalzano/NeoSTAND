@@ -547,8 +547,33 @@ void DataManager::assignStands(const std::string& callsign)
 	}
 
 	// Only stands with lowest priority remain or all stands if none had priority
-	std::string selectedStandName = standsJson.begin().key();
+	// Need to select smalest stand (Code)
+	char bestMaxCode = 'F';
+	bool anyCode = false;
+	auto selectedStandIt = standsJson.begin();
+	for (auto it = standsJson.begin(); it != standsJson.end(); ++it) {
+		if (it.value().contains("Code")) {
+			std::string code = it.value()["Code"].get<std::string>();
+			if (!code.empty()) {
+				anyCode = true;
+				char maxCode = *std::max_element(code.begin(), code.end());
+				if (maxCode < bestMaxCode) {
+					bestMaxCode = maxCode;
+					selectedStandIt = it;
+				}
+			}
+		}
+	}
+
+
 	auto selectedStand = standsJson.begin().value();
+	std::string selectedStandName = standsJson.begin().key();
+
+	if (anyCode) {
+		selectedStandName = selectedStandIt.key();
+		selectedStand = *selectedStandIt;
+	}
+
 	pilot.stand = selectedStandName;
 
 	updatePilotStand(pilot.callsign, pilot.stand);
