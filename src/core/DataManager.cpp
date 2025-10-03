@@ -128,25 +128,7 @@ int DataManager::retrieveConfigJson(const std::string& icao)
 
 		if (!tempJson.contains("version"))
 		{
-			if (!alreadyDownloaded)
-			{
-				std::lock_guard<std::mutex> lock(dataMutex_);
-				configJson_.clear();
-				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
-				alreadyDownloaded = true;
-				if (!downloadOk) return -1;
-				std::this_thread::sleep_for(std::chrono::milliseconds(300));
-				continue;
-			}
-			{
-				std::lock_guard<std::mutex> lock(dataMutex_);
-				if (!configsError_.contains(icaoUpper))
-					configsError_.insert(icaoUpper);
-				else return -1;
-			}
-			DisplayMessageFromDataManager("Config version missing in JSON file: " + fileName, "DataManager");
-			loggerAPI_->log(Logger::LogLevel::Error, "Config version missing in JSON file: " + fileName);
-			return -1;
+			break; // No version field, cannot check version must be custom local file -> accept it
 		}
 
 		const std::string versionRead = tempJson["version"].get<std::string>();
