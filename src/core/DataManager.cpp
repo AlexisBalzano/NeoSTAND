@@ -350,239 +350,235 @@ bool DataManager::removePilot(const std::string& callsign)
 
 void DataManager::assignStands(const std::string& callsign)
 {
-	std::optional<Pilot> pilotOpt = getPilotByCallsign(callsign);
-	if (!pilotOpt) return;
+    std::optional<Pilot> pilotOpt = getPilotByCallsign(callsign);
+    if (!pilotOpt) return;
 
-	Pilot pilot = *pilotOpt;
+    Pilot pilot = *pilotOpt;
 
-	std::vector<std::string> errorMessages;
-	errorMessages.reserve(300);
+    std::vector<std::string> errorMessages;
+    errorMessages.reserve(300);
 
-	// Check if configJSON is already the right one, if not, retrieve it
-	std::string icao = toUpperCase(pilot.destination);
-	if (!retrieveCorrectConfigJson(icao)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + callsign);
-		pilot.stand = "";
-		std::lock_guard<std::mutex> lock(dataMutex_);
-		updatePilotStand(callsign, pilot.stand);
-		return;
-	}
-	std::lock_guard<std::mutex> lock(dataMutex_);
-	
-	// If aircraft occupies stand already, assign the occupied stand
-	auto occupiedIt = std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&callsign](const Stand& stand) { return callsign == stand.callsign; });
-	if (occupiedIt != occupiedStands_.end()) {
-		pilot.stand = occupiedIt->name;
-		LOG_DEBUG(Logger::LogLevel::Info, "Pilot: " + pilot.callsign + " already occupies stand: " + pilot.stand);
-		updatePilotStand(callsign, pilot.stand);
-		return;
-	}
+    // Ensure correct config loaded
+    std::string icao = toUpperCase(pilot.destination);
+    if (!retrieveCorrectConfigJson(icao)) {
+        loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + callsign);
+        pilot.stand = "";
+        std::lock_guard<std::mutex> lock(dataMutex_);
+        updatePilotStand(callsign, pilot.stand);
+        return;
+    }
 
-	nlohmann::json standsJson;
-	if (configJson_.contains("Stands")) {
-		standsJson = configJson_["Stands"];
-		LOG_DEBUG(Logger::LogLevel::Info, "Assigning stand for pilot: " + pilot.callsign + " at " + pilot.destination);
-	}
-	else {
-		loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icao);
-		pilot.stand = "";
-		updatePilotStand(callsign, pilot.stand);
-		return;
-	}
+    bool needDump = false;
 
-	errorMessages.push_back("Total stands available before filtering: " + std::to_string(standsJson.size()));
+    {
+        std::lock_guard<std::mutex> lock(dataMutex_);
 
-	// Filter stands based on criteria
-	auto it = standsJson.begin();
+        // If aircraft already occupies a stand, reuse it
+        auto occupiedIt = std::find_if(occupiedStands_.begin(), occupiedStands_.end(),
+            [&callsign](const Stand& stand) { return callsign == stand.callsign; });
+        if (occupiedIt != occupiedStands_.end()) {
+            pilot.stand = occupiedIt->name;
+            LOG_DEBUG(Logger::LogLevel::Info, "Pilot: " + pilot.callsign + " already occupies stand: " + pilot.stand);
+            updatePilotStand(callsign, pilot.stand);
+            return;
+        }
 
-	while (it != standsJson.end()) {
-		const auto& stand = *it;
-		// Check Size Code
-		if (stand.contains("Code")) {
-			std::string code = stand["Code"].get<std::string>();
-			if (code.find(pilot.aircraftCode) == std::string::npos) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to code mismatch. Stand: " + code + " Pilot: " + pilot.aircraftCode);
-				it = standsJson.erase(it);
-				continue;
+        nlohmann::json standsJson;
+        if (configJson_.contains("Stands")) {
+            standsJson = configJson_["Stands"];
+            LOG_DEBUG(Logger::LogLevel::Info, "Assigning stand for pilot: " + pilot.callsign + " at " + pilot.destination);
+        }
+        else {
+            loggerAPI_->log(Logger::LogLevel::Warning, "No STAND section in config for: " + icao);
+            pilot.stand = "";
+            updatePilotStand(callsign, pilot.stand);
+            return;
+        }
+
+        errorMessages.push_back("Total stands available before filtering: " + std::to_string(standsJson.size()));
+
+        // Filtering
+        auto it = standsJson.begin();
+        while (it != standsJson.end()) {
+            const auto& stand = *it;
+            // Size Code
+            if (stand.contains("Code")) {
+                std::string code = stand["Code"].get<std::string>();
+                if (code.find(pilot.aircraftCode) == std::string::npos) {
+                    errorMessages.push_back("Removing stand " + it.key() + " due to code mismatch. Stand: " + code + " Pilot: " + pilot.aircraftCode);
+                    it = standsJson.erase(it);
+                    continue;
+                }
+            }
+            // Use
+            if (stand.contains("Use")) {
+                std::string use = stand["Use"].get<std::string>();
+                std::string pilotType;
+                switch (pilot.aircraftType) {
+                case AircraftType::airliner: pilotType = "A"; break;
+                case AircraftType::generalAviation: pilotType = "P"; break;
+                case AircraftType::helicopter: pilotType = "H"; break;
+                case AircraftType::military: pilotType = "M"; break;
+                case AircraftType::cargo: pilotType = "C"; break;
+                default: pilotType = ""; break;
+                }
+                if (use.find(pilotType) == std::string::npos) {
+                    errorMessages.push_back("Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
+                    it = standsJson.erase(it);
+                    continue;
+                }
+            }
+            // Schengen
+            if (stand.contains("Schengen")) {
+                bool schegen = stand["Schengen"].get<bool>();
+                if (schegen != pilot.isSchengen) {
+                    errorMessages.push_back("Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot.isSchengen ? "true" : "false"));
+                    it = standsJson.erase(it);
+                    continue;
+                }
+            }
+            // Countries
+            if (stand.contains("Countries")) {
+                std::vector<std::string> countries = stand["Countries"].get<std::vector<std::string>>();
+                std::string depCountry = pilot.origin;
+                if (depCountry.length() >= 2) depCountry = depCountry.substr(0, 2);
+                else depCountry.clear();
+                bool isFromCountry = std::find(countries.begin(), countries.end(), depCountry) != countries.end();
+                if (!isFromCountry) {
+                    std::string allowed;
+                    for (size_t i = 0; i < countries.size(); ++i) {
+                        if (i) allowed += ',';
+                        allowed += countries[i];
+                    }
+                    errorMessages.push_back("Removing stand " + it.key() + " due to Countries mismatch. Stand: " + allowed + " Pilot: " + depCountry);
+                    it = standsJson.erase(it);
+                    continue;
+                }
+            }
+            // Callsigns
+            if (stand.contains("Callsigns")) {
+                std::vector<std::string> callsigns = stand["Callsigns"].get<std::vector<std::string>>();
+                if (callsign.length() < 3 || std::find(callsigns.begin(), callsigns.end(), pilot.callsign.substr(0, 3)) == callsigns.end()) {
+                    errorMessages.push_back("Removing stand " + it.key() + " due to Callsign mismatch. Pilot: " + pilot.callsign);
+                    it = standsJson.erase(it);
+                    continue;
+                }
+            }
+            // Occupied
+            if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(),
+                [&it, icao](const Stand& s) { return it.key() == s.name && icao == s.icao; }) != occupiedStands_.end()) {
+                errorMessages.push_back("Removing stand " + it.key() + " because it is already occupied.");
+                it = standsJson.erase(it);
+                continue;
+            }
+            // Blocked
+            if (std::find_if(blockedStands_.begin(), blockedStands_.end(),
+                [&it, icao](const Stand& s) { return it.key() == s.name && icao == s.icao; }) != blockedStands_.end()) {
+                errorMessages.push_back("Removing stand " + it.key() + " because it is blocked.");
+                it = standsJson.erase(it);
+                continue;
+            }
+            ++it;
+        }
+
+        LOG_DEBUG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
+
+        // Priority pass (keep only lowest integer Priority; drop missing)
+        int lowestPriority = std::numeric_limits<int>::max();
+        bool anyPriority = false;
+        for (auto& [standName, s] : standsJson.items()) {
+            if (s.contains("Priority") && s["Priority"].is_number_integer()) {
+                int p = s["Priority"].get<int>();
+                if (p < lowestPriority) lowestPriority = p;
+                anyPriority = true;
+            }
+        }
+        if (anyPriority) {
+            for (auto it2 = standsJson.begin(); it2 != standsJson.end();) {
+                auto& s = it2.value();
+                if (s.contains("Priority") && s["Priority"].is_number_integer()) {
+                    int p = s["Priority"].get<int>();
+                    if (p != lowestPriority) {
+                        it2 = standsJson.erase(it2);
+                        continue;
+                    }
+                } else {
+                    it2 = standsJson.erase(it2);
+                    continue;
+                }
+                ++it2;
+            }
+        }
+
+		if (standsJson.empty()) {
+			if (!callsignError_.contains(pilot.callsign)) {
+				loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot.callsign + " at " + pilot.destination);
+				callsignError_.insert(pilot.callsign);
+				needDump = true; // defer file write until after we release dataMutex_
 			}
+			pilot.stand = "";
+			updatePilotStand(pilot.callsign, pilot.stand);
 		}
-
-		// Check USE
-		if (stand.contains("Use")) {
-			std::string use = stand["Use"].get<std::string>();
-			std::string pilotType;
-			switch (pilot.aircraftType) {
-			case AircraftType::airliner: pilotType = "A"; break;
-			case AircraftType::generalAviation: pilotType = "P"; break;
-			case AircraftType::helicopter: pilotType = "H"; break;
-			case AircraftType::military: pilotType = "M"; break;
-			case AircraftType::cargo: pilotType = "C"; break;
-			default: pilotType = ""; break;
-			}
-			if (use.find(pilotType) == std::string::npos) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to Use mismatch. Stand: " + use + " Pilot: " + pilotType);
-				it = standsJson.erase(it);
-				continue;
-			}
-		}
-
-		// Check SCHENGEN
-		if (stand.contains("Schengen")) {
-			bool schegen = stand["Schengen"].get<bool>();
-			if (schegen != pilot.isSchengen) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to Schengen mismatch. Stand: " + (schegen ? "true" : "false") + " Pilot: " + (pilot.isSchengen ? "true" : "false"));
-				it = standsJson.erase(it);
-				continue;
-			}
-		}
-
-		// Check COUNTRIES
-		if (stand.contains("Countries")) {
-			std::vector<std::string> countries = stand["Countries"].get<std::vector<std::string>>();
-			std::string depCountry = pilot.origin;
-			if (depCountry.length() >= 2) depCountry = depCountry.substr(0, 2);
-			else depCountry.clear();
-			bool isFromCountry = std::find(countries.begin(), countries.end(), depCountry) != countries.end();
-			if (!isFromCountry) {
-				std::string allowed;
-				for (size_t i = 0; i < countries.size(); ++i) {
-					if (i) allowed += ',';
-					allowed += countries[i];
-				}
-				errorMessages.push_back("Removing stand " + it.key() + " due to Countries mismatch. Stand: " + allowed + " Pilot: " + depCountry);
-				it = standsJson.erase(it);
-				continue;
-			}
-		}
-
-		// Check Callsigns
-		if (stand.contains("Callsigns")) {
-			std::vector<std::string> callsigns = stand["Callsigns"].get<std::vector<std::string>>();
-			if (callsign.length() < 3 || std::find(callsigns.begin(), callsigns.end(), pilot.callsign.substr(0, 3)) == callsigns.end()) {
-				errorMessages.push_back("Removing stand " + it.key() + " due to Callsign mismatch. Pilot: " + pilot.callsign);
-				it = standsJson.erase(it);
-				continue;
-			}
-		}
-
-		// Check if stand is occupied
-		if (std::find_if(occupiedStands_.begin(), occupiedStands_.end(), [&it, icao](const Stand& stand){ return it.key() == stand.name && icao == stand.icao;}) != occupiedStands_.end()) {
-			errorMessages.push_back("Removing stand " + it.key() + " because it is already occupied.");
-			it = standsJson.erase(it);
-			continue;
-		}
-
-		// Check if stand is blocked
-		if (std::find_if(blockedStands_.begin(), blockedStands_.end(), [&it, icao](const Stand& stand) { return it.key() == stand.name && icao == stand.icao; }) != blockedStands_.end()) {
-			errorMessages.push_back("Removing stand " + it.key() + " because it is blocked.");
-			it = standsJson.erase(it);
-			continue;
-		}
-
-		++it; // Only increment if not erased
-	}
-
-	if (standsJson.empty()) {
-		if (!callsignError_.contains(pilot.callsign)) {
-			loggerAPI_->log(Logger::LogLevel::Warning, "No suitable stand found for pilot: " + pilot.callsign + " at " + pilot.destination);
-			DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot.callsign + " at " + pilot.destination + ". Printed error to log File Documents/NeoRadar/logs/plugins/NeoSTAND/NeoSTAND_debug_" + pilot.callsign + ".log");
-			callsignError_.insert(pilot.callsign);
-			printToFile(errorMessages, "NeoSTAND_debug_" + pilot.callsign + ".log");
-		}
-		pilot.stand = "";
-		updatePilotStand(pilot.callsign, pilot.stand);
-		return;
-	}
-
-	LOG_DEBUG(Logger::LogLevel::Info, "Total stands available after filtering: " + std::to_string(standsJson.size()));
-
-	// Determine lowest priority first (keep all stands sharing that value)
-	int lowestPriority = std::numeric_limits<int>::max();
-	bool anyPriority = false;
-	for (auto& [standName, stand] : standsJson.items()) {
-		if (stand.contains("Priority") && stand["Priority"].is_number_integer()) {
-			int p = stand["Priority"].get<int>();
-			if (p < lowestPriority) lowestPriority = p;
-			anyPriority = true;
-		}
-	}
-
-	if (anyPriority) {
-		// Erase every stand whose priority != lowestPriority.
-		// Use iterator loop to avoid invalidation issues.
-		for (auto it = standsJson.begin(); it != standsJson.end(); ) {
-			auto& stand = it.value();
-			if (stand.contains("Priority") && stand["Priority"].is_number_integer()) {
-				int p = stand["Priority"].get<int>();
-				if (p != lowestPriority) {
-					it = standsJson.erase(it);
-					continue;
-				}
-			}
-			else {
-				// If a stand has no Priority while some priorities exist, drop it.
-				it = standsJson.erase(it);
-				continue;
-			}
-			++it;
-		}
-	}
-
-	// Only stands with lowest priority remain or all stands if none had priority
-	// Need to select smalest stand (Code)
-	char bestMaxCode = 'F';
-	bool anyCode = false;
-	auto selectedStandIt = standsJson.begin();
-	for (auto it = standsJson.begin(); it != standsJson.end(); ++it) {
-		if (it.value().contains("Code")) {
-			std::string code = it.value()["Code"].get<std::string>();
-			if (!code.empty()) {
-				anyCode = true;
-				char maxCode = *std::max_element(code.begin(), code.end());
-				if (maxCode < bestMaxCode) {
-					bestMaxCode = maxCode;
-					selectedStandIt = it;
+		else {
+			// Pick smallest-allowed Code among remaining
+			char bestMaxCode = 'F';
+			bool anyCode = false;
+			auto selectedStandIt = standsJson.begin();
+			for (auto it2 = standsJson.begin(); it2 != standsJson.end(); ++it2) {
+				if (it2.value().contains("Code")) {
+					std::string code = it2.value()["Code"].get<std::string>();
+					if (!code.empty()) {
+						anyCode = true;
+						char maxCode = *std::max_element(code.begin(), code.end());
+						if (maxCode < bestMaxCode) {
+							bestMaxCode = maxCode;
+							selectedStandIt = it2;
+						}
+					}
 				}
 			}
-		}
-	}
 
+			auto selectedStand = standsJson.begin().value();
+			std::string selectedStandName = standsJson.begin().key();
+			if (anyCode) {
+				selectedStandName = selectedStandIt.key();
+				selectedStand = *selectedStandIt;
+			}
 
-	auto selectedStand = standsJson.begin().value();
-	std::string selectedStandName = standsJson.begin().key();
+			pilot.stand = selectedStandName;
+			updatePilotStand(pilot.callsign, pilot.stand);
+			LOG_DEBUG(Logger::LogLevel::Info, "Assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
 
-	if (anyCode) {
-		selectedStandName = selectedStandIt.key();
-		selectedStand = *selectedStandIt;
-	}
-
-	pilot.stand = selectedStandName;
-
-	updatePilotStand(pilot.callsign, pilot.stand);
-
-	LOG_DEBUG(Logger::LogLevel::Info, "Assigned stand " + pilot.stand + " to pilot: " + pilot.callsign);
-
-	// Mark the stand as occupied
-	Stand stand;
-	stand.name = pilot.stand;
-	stand.icao = pilot.destination;
-	stand.callsign = pilot.callsign;
-	if (!selectedStand.contains("Apron") || !selectedStand["Apron"].get<bool>()) { // Only mark as occupied if not an apron stand
-		occupiedStands_.push_back(stand);
-		// Check if the stand is blocking other stands
-		if (selectedStand.contains("Block") && selectedStand["Block"].is_array())
-		{
-			for (const auto& blockedStandName : selectedStand["Block"]) {
-				Stand blockedStand;
-				blockedStand.name = blockedStandName.get<std::string>();
-				blockedStand.icao = pilot.destination;
-				blockedStand.callsign = pilot.callsign;
-				blockedStands_.push_back(blockedStand);
-				LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot.stand);
+			// Mark occupied unless Apron
+			Stand stand;
+			stand.name = pilot.stand;
+			stand.icao = pilot.destination;
+			stand.callsign = pilot.callsign;
+			if (!selectedStand.contains("Apron") || !selectedStand["Apron"].get<bool>()) {
+				occupiedStands_.push_back(stand);
+				if (selectedStand.contains("Block") && selectedStand["Block"].is_array()) {
+					for (const auto& blockedStandName : selectedStand["Block"]) {
+						Stand blockedStand;
+						blockedStand.name = blockedStandName.get<std::string>();
+						blockedStand.icao = pilot.destination;
+						blockedStand.callsign = pilot.callsign;
+						if (std::find(blockedStands_.begin(), blockedStands_.end(), blockedStand) == blockedStands_.end()) {
+							blockedStands_.push_back(blockedStand);
+							LOG_DEBUG(Logger::LogLevel::Info, "Also blocking stand " + blockedStand.name + " due to assignment of " + pilot.stand);
+						}
+					}
+				}
 			}
 		}
 	}
 
+    // Defer file writing to avoid re-locking dataMutex_ while held
+    if (needDump) {
+		std::string dumpFileName = "NeoSTAND_debug_" + pilot.callsign + ".log";
+		LOG_DEBUG(Logger::LogLevel::Info, "Dumping debug log to " + dumpFileName + " Size: " + std::to_string(errorMessages.size()));
+        printToFile(errorMessages, dumpFileName);
+		DisplayMessageFromDataManager("No suitable stand found for pilot: " + pilot.callsign + " at " + pilot.destination + ". Printed error to log File Documents/NeoRadar/logs/plugins/NeoSTAND/NeoSTAND_debug_" + pilot.callsign + ".log");
+    }
 }
 
 void DataManager::assignStandToPilot(const std::string& callsign, const std::string& standName)
@@ -797,17 +793,21 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign, const st
 	if (!aircraft.position.onGround) return "";
 
 	std::string icaoFromAircraft;
-	if (icao.empty()) {
+	if (!icao.empty()) {
+		icaoFromAircraft = toUpperCase(icao);
+	}
+	else if (!flightplanOpt.has_value()) {
+		return "";
+	}
+	else {
 		std::optional<double> distOrigin = aircraftAPI_->getDistanceFromOrigin(callsign);
 		std::optional<double> distDest = aircraftAPI_->getDistanceToDestination(callsign);
 		if (!distOrigin.has_value() || !distDest.has_value()) return "";
 		if (*distOrigin - *distDest > 0.) icaoFromAircraft = flightplanOpt->destination;
 		else icaoFromAircraft = toUpperCase(flightplanOpt->origin);
 	}
-	else {
-		icaoFromAircraft = toUpperCase(icao);
-	}
 
+	
 	std::vector<std::string> activeAirports = getAllActiveAirports();
 	if (std::find(activeAirports.begin(), activeAirports.end(), icaoFromAircraft) == activeAirports.end()) return "";
 
@@ -1012,12 +1012,13 @@ void DataManager::removeAllPilots()
 
 DataManager::AircraftType DataManager::getAircraftType(const Flightplan::Flightplan& fp)
 {
-	//IMPROVE: parse from Config.json all the types so it can be modified by user
 	std::string callsign = toUpperCase(fp.callsign);
 
 	if (callsign.size() < 3) return AircraftType::generalAviation;
 	if (callsign[1] == '-' || callsign[2] == '-') return AircraftType::generalAviation;
 	
+	std::lock_guard<std::mutex> lock(dataMutex_);
+
 	if (cargo.contains(callsign.substr(0, 3))) return AircraftType::cargo;
 	
 	std::string acType = fp.acType;
@@ -1095,6 +1096,7 @@ std::vector<DataManager::Stand> DataManager::getAvailableStandsForAirport(const 
 {
 	std::vector<Stand> allStands = getAllStandsForAirport(icao);
 	std::vector<Stand> availableStands;
+	std::lock_guard<std::mutex> lock(dataMutex_);
 	for (const auto& stand : allStands) {
 		bool isOccupied = std::find_if(occupiedStands_.begin(), occupiedStands_.end(),
 			[&stand](const Stand& s) { return s.name == stand.name && s.icao == stand.icao; }) != occupiedStands_.end();
