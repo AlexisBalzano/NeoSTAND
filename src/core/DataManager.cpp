@@ -95,8 +95,10 @@ int DataManager::retrieveConfigJson(const std::string& icao)
 		{
 			if (!alreadyDownloaded)
 			{
-				std::lock_guard<std::mutex> lock(dataMutex_);
-				configJson_.clear();
+				{
+					std::lock_guard<std::mutex> lock(dataMutex_);
+					configJson_.clear();
+				}
 				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
 				alreadyDownloaded = true;
 				if (!downloadOk) return -1;
@@ -150,8 +152,10 @@ int DataManager::retrieveConfigJson(const std::string& icao)
 
 			if (!alreadyDownloaded)
 			{
-				std::lock_guard<std::mutex> lock(dataMutex_);
-				configJson_.clear();
+				{
+					std::lock_guard<std::mutex> lock(dataMutex_);
+					configJson_.clear();
+				}
 				bool downloadOk = neoSTAND_->downloadAirportConfig(icao);
 				alreadyDownloaded = true;
 				if (!downloadOk)
