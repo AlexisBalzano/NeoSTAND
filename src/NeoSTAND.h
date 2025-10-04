@@ -8,7 +8,7 @@
 #include "core/DataManager.h"
 #include "utils/Color.h"
 
-constexpr const char* NEOSTAND_VERSION = "v1.0.1";
+constexpr const char* NEOSTAND_VERSION = "v1.0.2";
 
 using namespace PluginSDK;
 
@@ -118,11 +118,11 @@ namespace stand {
         void RegisterTagItems();
         void RegisterTagActions();
         void RegisterCommand();
-        void unegisterCommand();
+        void unregisterCommand();
         void OnTagAction(const Tag::TagActionEvent* event) override;
         void OnTagDropdownAction(const Tag::DropdownActionEvent* event) override;
         void UpdateTagItems(std::string Callsign);
-        Color ColorizeStand();
+        //Color ColorizeStand();
         void updateStandMenuButtons(const std::string& icao);
 
 	    // TAG Items IDs

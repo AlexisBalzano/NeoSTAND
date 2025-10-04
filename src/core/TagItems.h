@@ -24,9 +24,9 @@ void NeoSTAND::RegisterTagItems()
     standItemId_ = tagID;
 }
 
-Color NeoSTAND::ColorizeStand() {
-	//TODO: implement color logic based on stand assignment status
-	return std::array<unsigned int, 3>{255, 255, 255};
-}
+//Color NeoSTAND::ColorizeStand() {
+//	//TODO: implement color logic based on stand assignment status
+//	return std::array<unsigned int, 3>{255, 255, 255};
+//}
 
 }  // namespace stand

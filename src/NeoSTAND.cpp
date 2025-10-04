@@ -193,7 +193,7 @@ void NeoSTAND::Shutdown()
 
     if (dataManager_) dataManager_.reset();
 
-    this->unegisterCommand();
+    this->unregisterCommand();
 }
 
 void stand::NeoSTAND::Reset()
@@ -326,12 +326,12 @@ void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnecte
 }
 
 void NeoSTAND::UpdateTagItems(std::string callsign) {
-    DataManager::Pilot* pilot = dataManager_->getPilotByCallsign(callsign);
+    std::optional<DataManager::Pilot> pilot = dataManager_->getPilotByCallsign(callsign);
     if (!pilot || pilot->empty()) return;
 
     Tag::TagContext tagContext;
     tagContext.callsign = callsign;
-    tagContext.colour = ColorizeStand();
+    //tagContext.colour = ColorizeStand();
 
 	std::string stand = pilot->stand.empty() ? "N/A" : pilot->stand;
 

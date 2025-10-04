@@ -55,7 +55,7 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
     {
         return;
     }
-	DataManager::Pilot* pilot = dataManager_->getPilotByCallsign(event->callsign);
+    std::optional<DataManager::Pilot> pilot = dataManager_->getPilotByCallsign(event->callsign);
 	if (!pilot || pilot->empty()) return;
 
     if (event->componentId == "None")
@@ -64,12 +64,13 @@ void NeoSTAND::OnTagDropdownAction(const PluginSDK::Tag::DropdownActionEvent *ev
         {
             dataManager_->freeStand(pilot->stand);
             pilot->stand.clear();
+			dataManager_->updatePilotStand(pilot->callsign, pilot->stand);
             UpdateTagItems(pilot->callsign);
         }
         return;
 	}
 
-	dataManager_->assignStandToPilot(*pilot, event->componentId);
+	dataManager_->assignStandToPilot(pilot->callsign, event->componentId);
     UpdateTagItems(pilot->callsign);
 }
 

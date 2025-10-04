@@ -78,7 +78,7 @@ void NeoSTAND::RegisterCommand() {
     }
 }
 
-inline void NeoSTAND::unegisterCommand()
+inline void NeoSTAND::unregisterCommand()
 {
     if (CommandProvider_)
     {
@@ -119,9 +119,8 @@ void generateDumpLog(std::vector<std::string>& lines, std::string time, NeoSTAND
     }
     else {
         for (const DataManager::Pilot& pilot : pilots) {
-            lines.push_back("  " + pilot.callsign + " - Dest:" + pilot.destination + " - WTC:" + pilot.aircraftWTC + " - " +
-                (pilot.isSchengen ? "Schengen" : "Non-Schengen") + " - " +
-                (pilot.isNational ? "National" : "International") + " - Stand: " + (pilot.stand.empty() ? "None" : pilot.stand));
+            lines.push_back("  " + pilot.callsign + " - Dest:" + pilot.destination + " - Code:" + pilot.aircraftCode + " - " +
+                (pilot.isSchengen ? "Schengen" : "Non-Schengen") + " - Stand: " + (pilot.stand.empty() ? "None" : pilot.stand));
         }
     }
     lines.push_back("Occupied Stands:");
@@ -190,8 +189,8 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
 		  ".stand airports",
 		  ".stand occupied",
 		  ".stand blocked",
-          ".stand dump"
-		  ".stand pilot <callsign>",
+          ".stand dump",
+		  ".stand pilot <callsign>"
             })
         {
             neoSTAND_->DisplayMessage(line);
@@ -261,9 +260,8 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
     else if (commandId == neoSTAND_->dumpCommandId_)
     {
         std::vector<std::string> lines;
-        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+        auto now = std::chrono::system_clock::now();
         std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-		generateDumpLog(lines, std::string(std::ctime(&now_c)), neoSTAND_);       
         std::tm tm{};
 #if defined(_WIN32)
         if (localtime_s(&tm, &now_c) != 0) {
@@ -276,10 +274,12 @@ Chat::CommandResult NeoSTANDCommandProvider::Execute( const std::string &command
             return { true, std::nullopt };
         }
 #endif
+        std::ostringstream human;
+        human << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        generateDumpLog(lines, human.str(), neoSTAND_);
+
         std::ostringstream oss;
-        oss << "NeoSTAND_ConfigDump_"
-            << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S")
-            << ".txt";
+        oss << "NeoSTAND_ConfigDump_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S") << ".txt";
         std::string fileName = oss.str();
 
         bool success = neoSTAND_->GetDataManager()->printToFile(lines, fileName);
