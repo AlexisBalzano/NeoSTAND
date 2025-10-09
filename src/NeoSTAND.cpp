@@ -298,7 +298,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             stand.callsign = aircraft.callsign;
             stand.icao = icao;
             dataManager_->addStandToOccupied(stand);
-
+			ignoredCallsigns_.insert(aircraft.callsign);
         }
     }
 }
