@@ -1093,7 +1093,7 @@ std::vector<DataManager::Stand> DataManager::getAllStandsForAirport(const std::s
 	}
 
 	std::lock_guard<std::mutex> lock(dataMutex_);
-	nlohmann::json standsJson;
+	nlohmann::ordered_json standsJson;
 	if (configJson_.contains("Stands")) {
 		standsJson = configJson_["Stands"];
 	}
