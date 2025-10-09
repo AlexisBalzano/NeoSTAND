@@ -270,7 +270,6 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
         }
         if (!fp.has_value()) {
 			std::string currentAirport = dataManager_->getAirportPosition(aircraft.position);
-
             if (!currentAirport.empty()) {
                 std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign, currentAirport);
                 if (!currentStand.empty()) {

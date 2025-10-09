@@ -1127,8 +1127,6 @@ std::vector<DataManager::Stand> DataManager::getAvailableStandsForAirport(const 
 
 std::string DataManager::getAirportPosition(const Aircraft::Position& acPosition)
 {
-	LOG_DEBUG(Logger::LogLevel::Info, "Searching airport for position: " +
-		std::to_string(acPosition.latitude) + "," + std::to_string(acPosition.longitude));
 	std::vector<std::string> activeAirports = getAllActiveAirports();
 
 	for (const auto& icao : activeAirports) {
@@ -1150,11 +1148,15 @@ std::string DataManager::getAirportPosition(const Aircraft::Position& acPosition
 			airportCoord.substr(0, airportCoord.find(':')) : "";
 		std::string airportLonStr = airportCoord.find(':') != std::string::npos ?
 			airportCoord.substr(airportCoord.find(':') + 1) : "";
+		std::string airportRadiusStr = airportCoord.find(':') != std::string::npos &&
+			airportCoord.find(':', airportCoord.find(':') + 1) != std::string::npos ?
+			airportCoord.substr(airportCoord.find(':', airportCoord.find(':') + 1) + 1) : "";
 
-		double airportLat = 0.0, airportLon = 0.0;
+		double airportLat = 0.0, airportLon = 0.0, radius;
 		try {
 			airportLat = std::stod(airportLatStr);
 			airportLon = std::stod(airportLonStr);
+			radius = airportRadiusStr.empty() ? 3000.0 : std::stod(airportRadiusStr);
 		}
 		catch (...) {
 			continue;
@@ -1179,7 +1181,8 @@ std::string DataManager::getAirportPosition(const Aircraft::Position& acPosition
 			acPosition.latitude, acPosition.longitude,
 			airportLat, airportLon
 		);
-		if (distanceMeters <= getMaxDistance()) {
+
+		if (distanceMeters <= radius) {
 			return icao;
 		}
 	}
