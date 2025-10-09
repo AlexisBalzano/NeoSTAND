@@ -110,7 +110,7 @@ int DataManager::retrieveConfigJson(const std::string& icao)
 				firstErrorForFile = !configsError_.contains(icaoUpper);
 				configsError_.insert(icaoUpper);
 			}
-			if (firstErrorForFile)
+			if (firstErrorForFile && !configsError_.contains(icaoUpper))
 			{
 				DisplayMessageFromDataManager("Could not open JSON file: " + jsonPath.string(), "DataManager");
 				loggerAPI_->log(Logger::LogLevel::Error, "Could not open JSON file: " + jsonPath.string());
@@ -144,7 +144,7 @@ int DataManager::retrieveConfigJson(const std::string& icao)
 				configsError_.insert(icaoUpper);
 			}
 
-			if (firstErrorForFile)
+			if (firstErrorForFile && !configsError_.contains(icaoUpper))
 			{
 				DisplayMessageFromDataManager("Config version mismatch! Expected: " + version + ", Found: " + versionRead + " (" + fileName + ")", "DataManager");
 				loggerAPI_->log(Logger::LogLevel::Error, "Config version mismatch! Expected: " + version + ", Found: " + versionRead + " " + fileName);
@@ -365,7 +365,10 @@ void DataManager::assignStands(const std::string& callsign)
     // Ensure correct config loaded
     std::string icao = toUpperCase(pilot.destination);
     if (!retrieveCorrectConfigJson(icao)) {
-        loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + callsign);
+		if (!configsError_.contains(icao)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + callsign);
+			configsError_.insert(icao);
+		}
         pilot.stand = "";
         std::lock_guard<std::mutex> lock(dataMutex_);
         updatePilotStand(callsign, pilot.stand);
@@ -598,7 +601,10 @@ void DataManager::assignStandToPilot(const std::string& callsign, const std::str
 	// Check if configJSON is already the right one, if not, retrieve it
 	std::string icao = toUpperCase(pilot.destination);
 	if (!retrieveCorrectConfigJson(icao)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + pilot.callsign);
+		if (!configsError_.contains(icao)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + pilot.callsign);
+			configsError_.insert(icao);
+		}
 		pilot.stand = "";
 		std::lock_guard<std::mutex> lock(dataMutex_);
 		updatePilotStand(pilot.callsign, pilot.stand);
@@ -832,7 +838,10 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign, const st
 
 	// Load stands for the airport
 	if (!retrieveCorrectConfigJson(icaoFromAircraft)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icaoFromAircraft);
+		if (!configsError_.contains(icaoFromAircraft)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icaoFromAircraft);
+			configsError_.insert(icaoFromAircraft);
+		}
 		return "";
 	}
 
@@ -1071,7 +1080,10 @@ std::vector<DataManager::Stand> DataManager::getBlockedStands()
 std::vector<DataManager::Stand> DataManager::getAllStandsForAirport(const std::string& icao)
 {
 	if (!retrieveCorrectConfigJson(icao)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
+		if (!configsError_.contains(icao)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icao);
+			configsError_.insert(icao);
+		}
 		return {};
 	}
 
@@ -1122,7 +1134,10 @@ std::string DataManager::getAirportPosition(const Aircraft::Position& acPosition
 	for (const auto& icao : activeAirports) {
 		// Load stands for the airport
 		if (!retrieveCorrectConfigJson(icao)) {
-			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icao);
+			if (!configsError_.contains(icao)) {
+				loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icao);
+				configsError_.insert(icao);
+			}
 			return "";
 		}
 

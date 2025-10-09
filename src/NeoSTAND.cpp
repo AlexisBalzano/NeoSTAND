@@ -132,7 +132,7 @@ bool stand::NeoSTAND::downloadAirportConfig(std::string icao)
                 extra = " Redirect Location: " + it->second;
             }
         }
-        logger_->error("Failed to download airport configuration. HTTP status: " + std::to_string(status) + extra);
+        //logger_->error("Failed to download airport configuration. HTTP status: " + std::to_string(status) + extra);
     }
 
     return success;
