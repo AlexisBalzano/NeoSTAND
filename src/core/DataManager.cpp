@@ -40,6 +40,7 @@ std::filesystem::path DataManager::getDllDirectory()
 void DataManager::clearData()
 {
 	configPath_.clear();
+	standMenuICAO_.clear();
 	pilots_.clear();
 	activeAirports_.clear();
 	occupiedStands_.clear();
@@ -264,6 +265,10 @@ bool DataManager::parseSettings()
 
 	if (settingJson_.contains("config_github_url") && settingJson_["config_github_url"].is_string()) {
 		configUrl_ = settingJson_["config_github_url"].get<std::string>();
+	}
+
+	if(settingJson_.contains("standMenuICAO") && settingJson_["standMenuICAO"].is_string()) {
+		standMenuICAO_ = toUpperCase(settingJson_["standMenuICAO"].get<std::string>());
 	}
 
 	updateInterval_ = readInt("update_interval", stand::DEFAULT_UPDATE_INTERVAL);

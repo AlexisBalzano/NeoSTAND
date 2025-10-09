@@ -221,7 +221,10 @@ void NeoSTAND::DisplayMessage(const std::string &message, const std::string &sen
 }
 
 void NeoSTAND::runScopeUpdate() {
-    updateStandMenuButtons("LFPG"); // need to find a way to get the current pilot ICAO
+    if (menuNeedsUpdate) {
+        updateStandMenuButtons(dataManager_->getStandMenuICAO());
+		menuNeedsUpdate = false;
+    }
 
     if (!dataManager_) return;
 	dataManager_->updateAllPilots();
@@ -249,6 +252,7 @@ void stand::NeoSTAND::OnAirportConfigurationsUpdated(const Airport::AirportConfi
     ClearAllTagCache();
     dataManager_->removeAllPilots();
     dataManager_->PopulateActiveAirports();
+	menuNeedsUpdate = true;
 }
 
 void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* event)
@@ -268,7 +272,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
                 continue;
             }
         }
-        if (!fp.has_value()) {
+        if (!fp.has_value() || !dataManager_->isConcernedAircraft(*fp)) {
 			std::string currentAirport = dataManager_->getAirportPosition(aircraft.position);
             if (!currentAirport.empty()) {
                 std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign, currentAirport);
@@ -280,6 +284,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
                     stand.callsign = aircraft.callsign;
                     stand.icao = icao;
                     dataManager_->addStandToOccupied(stand);
+					menuNeedsUpdate = true;
                     break;
                 }
             }
@@ -298,6 +303,7 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             stand.callsign = aircraft.callsign;
             stand.icao = icao;
             dataManager_->addStandToOccupied(stand);
+			menuNeedsUpdate = true;
 			ignoredCallsigns_.insert(aircraft.callsign);
         }
     }
@@ -323,6 +329,7 @@ void stand::NeoSTAND::OnAircraftDisconnected(const Aircraft::AircraftDisconnecte
     dataManager_->removePilot(event->callsign);
 	ignoredCallsigns_.erase(event->callsign);
 	ClearTagCache(event->callsign);
+	menuNeedsUpdate = true;
 }
 
 void NeoSTAND::UpdateTagItems(std::string callsign) {

@@ -94,6 +94,7 @@ namespace stand {
         std::thread m_worker;
         bool m_stop;
 		bool autoMode = true;
+		bool menuNeedsUpdate = true;
         std::unordered_map<std::string, std::unordered_map<std::string, TagRenderState>> tagCache_;
         std::mutex tagCacheMutex_;
         std::string configVersion;

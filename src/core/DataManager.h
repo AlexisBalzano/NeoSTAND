@@ -96,6 +96,7 @@ public:
 	std::unordered_set<std::string> getMilitaryTypes() const { return militaryTypes; }
 	std::unordered_set<std::string> getGATypes() const { return gaTypes; }
 	std::string getAirportPosition(const Aircraft::Position& acPosition);
+	std::string getStandMenuICAO() const { return standMenuICAO_; }
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isArrival(const std::string& callsign);
@@ -119,6 +120,7 @@ private:
 	nlohmann::ordered_json configJson_;
 	nlohmann::ordered_json settingJson_;
 	std::string configUrl_;
+	std::string standMenuICAO_;
 	std::vector<Pilot> pilots_;
 	std::vector<std::string> activeAirports_;
 	std::vector<Stand> occupiedStands_;
