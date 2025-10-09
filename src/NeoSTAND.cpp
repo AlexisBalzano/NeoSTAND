@@ -269,10 +269,10 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             }
         }
         if (!fp.has_value()) {
-			// static & no flightplan -> check against all Stands
-			std::vector<std::string> activeAirports = dataManager_->getAllActiveAirports();
-            for (const auto& icao : activeAirports) {
-                std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign, icao);
+			std::string currentAirport = dataManager_->getAirportPosition(aircraft.position);
+
+            if (!currentAirport.empty()) {
+                std::string currentStand = dataManager_->isAircraftOnStand(aircraft.callsign, currentAirport);
                 if (!currentStand.empty()) {
                     std::string icao = currentStand.substr(currentStand.length() - 4, 4);
                     currentStand = currentStand.substr(0, currentStand.length() - 5);
@@ -283,7 +283,8 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
                     dataManager_->addStandToOccupied(stand);
                     break;
                 }
-			}
+            }
+
 			ignoredCallsigns_.insert(aircraft.callsign);
 			continue;
         }

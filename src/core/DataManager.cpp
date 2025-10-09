@@ -832,7 +832,7 @@ std::string DataManager::isAircraftOnStand(const std::string& callsign, const st
 
 	// Load stands for the airport
 	if (!retrieveCorrectConfigJson(icaoFromAircraft)) {
-		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when assigning Stand for: " + icaoFromAircraft);
+		loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icaoFromAircraft);
 		return "";
 	}
 
@@ -1111,6 +1111,64 @@ std::vector<DataManager::Stand> DataManager::getAvailableStandsForAirport(const 
 		}
 	}
 	return availableStands;
+}
+
+std::string DataManager::getAirportPosition(const Aircraft::Position& acPosition)
+{
+	LOG_DEBUG(Logger::LogLevel::Info, "Searching airport for position: " +
+		std::to_string(acPosition.latitude) + "," + std::to_string(acPosition.longitude));
+	std::vector<std::string> activeAirports = getAllActiveAirports();
+
+	for (const auto& icao : activeAirports) {
+		// Load stands for the airport
+		if (!retrieveCorrectConfigJson(icao)) {
+			loggerAPI_->log(Logger::LogLevel::Warning, "Failed to retrieve config when checking Stand for: " + icao);
+			return "";
+		}
+
+		std::string airportCoord = configJson_.contains("Coordinates") && configJson_["Coordinates"].is_string() ?
+			configJson_["Coordinates"].get<std::string>() : "";
+
+		if (airportCoord.empty()) continue;
+
+		std::string airportLatStr = airportCoord.find(':') != std::string::npos ?
+			airportCoord.substr(0, airportCoord.find(':')) : "";
+		std::string airportLonStr = airportCoord.find(':') != std::string::npos ?
+			airportCoord.substr(airportCoord.find(':') + 1) : "";
+
+		double airportLat = 0.0, airportLon = 0.0;
+		try {
+			airportLat = std::stod(airportLatStr);
+			airportLon = std::stod(airportLonStr);
+		}
+		catch (...) {
+			continue;
+		}
+
+		double distanceMeters = 0.0;
+		auto haversineMeters = [](double lat1Deg, double lon1Deg, double lat2Deg, double lon2Deg) -> double {
+			constexpr double kPi = 3.14159265358979323846;
+			constexpr double kR = 6371000.0; // meters
+			auto rad = [&](double d) { return d * kPi / 180.0; };
+			double lat1 = rad(lat1Deg), lon1 = rad(lon1Deg);
+			double lat2 = rad(lat2Deg), lon2 = rad(lon2Deg);
+			double dLat = lat2 - lat1;
+			double dLon = lon2 - lon1;
+			double a = std::sin(dLat / 2) * std::sin(dLat / 2) +
+				std::cos(lat1) * std::cos(lat2) *
+				std::sin(dLon / 2) * std::sin(dLon / 2);
+			double c = 2 * std::atan2(std::sqrt(a), std::sqrt(1 - a));
+			return kR * c;
+			};
+		distanceMeters = haversineMeters(
+			acPosition.latitude, acPosition.longitude,
+			airportLat, airportLon
+		);
+		if (distanceMeters <= getMaxDistance()) {
+			return icao;
+		}
+	}
+	return "";
 }
 
 bool DataManager::isConcernedAircraft(const Flightplan::Flightplan& fp)

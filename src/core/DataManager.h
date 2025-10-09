@@ -95,6 +95,7 @@ public:
 	std::unordered_set<std::string> getHeliTypes() const { return heliTypes; }
 	std::unordered_set<std::string> getMilitaryTypes() const { return militaryTypes; }
 	std::unordered_set<std::string> getGATypes() const { return gaTypes; }
+	std::string getAirportPosition(const Aircraft::Position& acPosition);
 	
 	bool isConcernedAircraft(const Flightplan::Flightplan& fp);
 	bool isArrival(const std::string& callsign);
