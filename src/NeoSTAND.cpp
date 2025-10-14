@@ -298,6 +298,13 @@ void stand::NeoSTAND::OnPositionUpdate(const Aircraft::PositionUpdateEvent* even
             std::string icao = currentStand.substr(currentStand.length() - 4, 4);
             currentStand = currentStand.substr(0, currentStand.length() - 5);
 
+			auto pilot = dataManager_->getPilotByCallsign(aircraft.callsign);
+            if (pilot.has_value() && pilot->stand != "") {
+				dataManager_->freeStand(pilot->stand);
+				LOG_DEBUG(Logger::LogLevel::Info, "Freeing previously assigned stand " + pilot->stand + " for pilot: " + pilot->callsign + " since now occupying: " + currentStand + " (" + icao +")");
+            }
+
+
             DataManager::Stand stand;
             stand.name = currentStand;
             stand.callsign = aircraft.callsign;
